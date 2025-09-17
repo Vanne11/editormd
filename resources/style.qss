@@ -1,0 +1,28 @@
+QMainWindow {
+    background-color: #2b2b3c;
+    color: #f5f5f5;
+}
+
+QTextEdit {
+    background-color: #3a3a4f;
+    color: #ffffff;
+    border: none;
+    padding: 10px;
+    font-size: 14px;
+    font-family: "Fira Code", monospace;
+}
+
+QToolBar {
+    background-color: #6a5acd; /* pastel morado */
+    spacing: 5px;
+}
+
+QToolButton {
+    background-color: #7b68ee; /* otro tono pastel morado */
+    border-radius: 5px;
+    padding: 5px;
+}
+
+QToolButton:hover {
+    background-color: #9370db;
+}
