@@ -1,5 +1,5 @@
 import sys
-from PySide6.QtWidgets import QApplication, QMainWindow, QFileDialog, QTextEdit, QSplitter, QComboBox, QLabel
+from PySide6.QtWidgets import QApplication, QMainWindow, QFileDialog, QTextEdit, QSplitter, QComboBox, QLabel, QDockWidget
 from PySide6.QtWidgets import QToolBar
 from PySide6.QtGui import QAction
 from PySide6.QtCore import Qt
@@ -47,6 +47,9 @@ class MainWindow(QMainWindow):
         theme_toolbar.addWidget(self.theme_combo)
         
         self.addToolBar(Qt.TopToolBarArea, theme_toolbar)
+
+        # Panel de ayuda
+        self.create_help_panel()
 
         # Menú
         self.create_menus()
@@ -111,6 +114,109 @@ class MainWindow(QMainWindow):
         both_action.setShortcut("Ctrl+3")
         both_action.triggered.connect(self.show_both)
         view_menu.addAction(both_action)
+        
+        view_menu.addSeparator()
+        
+        toggle_help_action = QAction("Mostrar/Ocultar Guía", self)
+        toggle_help_action.setShortcut("F1")
+        toggle_help_action.triggered.connect(self.toggle_help)
+        view_menu.addAction(toggle_help_action)
+
+    def create_help_panel(self):
+        """Crea el panel de ayuda con la guía de Markdown"""
+        self.help_dock = QDockWidget("Guía de Markdown", self)
+        self.help_dock.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
+        
+        help_content = QTextEdit()
+        help_content.setHtml("""
+        <style>
+            body { font-family: 'Segoe UI', sans-serif; font-size: 12px; }
+            h3 { color: #4a148c; margin: 15px 0 8px 0; }
+            h4 { color: #7b1fa2; margin: 12px 0 6px 0; }
+            code { background: #f3e5f5; padding: 2px 4px; border-radius: 3px; }
+            .example { background: #faf5fc; padding: 8px; margin: 5px 0; border-radius: 4px; }
+        </style>
+        
+        <h3>📝 Formato de Texto</h3>
+        <div class="example">
+            <strong>Negrita:</strong> <code>**texto**</code><br>
+            <em>Cursiva:</em> <code>*texto*</code><br>
+            <code>Código:</code> <code>`código`</code><br>
+            <del>Tachado:</del> <code>~~texto~~</code>
+        </div>
+        
+        <h3>📋 Encabezados</h3>
+        <div class="example">
+            <code># Título 1</code><br>
+            <code>## Título 2</code><br>
+            <code>### Título 3</code><br>
+            <code>#### Título 4</code>
+        </div>
+        
+        <h3>📌 Listas</h3>
+        <h4>Con viñetas:</h4>
+        <div class="example">
+            <code>- Elemento 1</code><br>
+            <code>- Elemento 2</code><br>
+            <code>  - Subelemento</code>
+        </div>
+        
+        <h4>Numeradas:</h4>
+        <div class="example">
+            <code>1. Primero</code><br>
+            <code>2. Segundo</code><br>
+            <code>3. Tercero</code>
+        </div>
+        
+        <h4>Tareas:</h4>
+        <div class="example">
+            <code>- [ ] Pendiente</code><br>
+            <code>- [x] Completado</code>
+        </div>
+        
+        <h3>🔗 Enlaces e Imágenes</h3>
+        <div class="example">
+            <strong>Enlace:</strong><br>
+            <code>[Texto](https://ejemplo.com)</code><br><br>
+            <strong>Imagen:</strong><br>
+            <code>![Alt text](url-imagen.jpg)</code>
+        </div>
+        
+        <h3>💬 Citas y Código</h3>
+        <div class="example">
+            <strong>Cita:</strong><br>
+            <code>&gt; Texto citado</code><br><br>
+            <strong>Bloque de código:</strong><br>
+            <code>```javascript<br>
+            console.log("Hola!");<br>
+            ```</code>
+        </div>
+        
+        <h3>📊 Tablas</h3>
+        <div class="example">
+            <code>| Col 1 | Col 2 |</code><br>
+            <code>|-------|-------|</code><br>
+            <code>| Dato1 | Dato2 |</code>
+        </div>
+        
+        <h3>⚡ Atajos de Teclado</h3>
+        <div class="example">
+            <code>Ctrl+N</code> - Nuevo<br>
+            <code>Ctrl+O</code> - Abrir<br>
+            <code>Ctrl+S</code> - Guardar<br>
+            <code>F11</code> - Ocultar editor<br>
+            <code>F12</code> - Ocultar vista previa<br>
+            <code>F1</code> - Esta guía
+        </div>
+        
+        <p style="margin-top: 15px; font-style: italic; color: #666;">
+            💡 <strong>Tip:</strong> Usa la barra de herramientas para insertar elementos sin memorizar la sintaxis.
+        </p>
+        """)
+        help_content.setReadOnly(True)
+        
+        self.help_dock.setWidget(help_content)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.help_dock)
 
     def change_theme(self, theme_name):
         if theme_name in themes:
@@ -169,6 +275,9 @@ class MainWindow(QMainWindow):
     def show_both(self):
         self.editor.setVisible(True)
         self.preview.setVisible(True)
+    
+    def toggle_help(self):
+        self.help_dock.setVisible(not self.help_dock.isVisible())
 
 
 if __name__ == "__main__":

@@ -113,10 +113,16 @@ class EditorToolBar(QToolBar):
         self.addAction(code_block_action)
 
         # Tabla
-        table_action = QAction("📊", self)
-        table_action.setToolTip("Tabla")
+        table_action = QAction("Tabla", self)
+        table_action.setToolTip("Crear tabla")
         table_action.triggered.connect(self.insert_table)
         self.addAction(table_action)
+
+        # Línea horizontal
+        hr_action = QAction("---", self)
+        hr_action.setToolTip("Línea horizontal")
+        hr_action.triggered.connect(self.insert_horizontal_rule)
+        self.addAction(hr_action)
 
     def insert_around_selection(self, before, after=""):
         """Inserta texto antes y después de la selección"""
@@ -248,33 +254,60 @@ class EditorToolBar(QToolBar):
 
     def insert_table(self):
         """Inserta una tabla básica"""
-        rows, ok1 = QInputDialog.getInt(
-            self.parent(), 
-            'Tabla', 
-            'Filas:', 
-            value=3, min=2, max=10
-        )
-        
-        if ok1:
-            cols, ok2 = QInputDialog.getInt(
+        try:
+            rows, ok1 = QInputDialog.getInt(
                 self.parent(), 
-                'Tabla', 
-                'Columnas:', 
-                value=3, min=2, max=8
+                'Crear Tabla', 
+                'Número de filas:', 
+                value=3, min=2, max=10
             )
             
-            if ok2:
-                # Crear tabla
-                header = "| " + " | ".join([f"Col {i+1}" for i in range(cols)]) + " |"
-                separator = "| " + " | ".join(["---" for _ in range(cols)]) + " |"
+            if ok1:
+                cols, ok2 = QInputDialog.getInt(
+                    self.parent(), 
+                    'Crear Tabla', 
+                    'Número de columnas:', 
+                    value=3, min=2, max=8
+                )
                 
-                table_lines = [header, separator]
-                
-                for i in range(rows - 1):
-                    row = "| " + " | ".join([" " for _ in range(cols)]) + " |"
-                    table_lines.append(row)
-                
-                table_text = "\n" + "\n".join(table_lines) + "\n"
-                
-                cursor = self.editor.textCursor()
-                cursor.insertText(table_text)
+                if ok2:
+                    cursor = self.editor.textCursor()
+                    cursor.movePosition(QTextCursor.StartOfLine)
+                    
+                    # Crear encabezado
+                    header_cells = []
+                    separator_cells = []
+                    
+                    for i in range(cols):
+                        header_cells.append(f"Columna {i+1}")
+                        separator_cells.append("---")
+                    
+                    # Líneas de la tabla
+                    table_lines = []
+                    table_lines.append("| " + " | ".join(header_cells) + " |")
+                    table_lines.append("| " + " | ".join(separator_cells) + " |")
+                    
+                    # Filas de datos
+                    for row in range(rows - 1):  # -1 porque el header ya cuenta
+                        row_cells = []
+                        for col in range(cols):
+                            row_cells.append(f"Fila{row+1}Col{col+1}")
+                        table_lines.append("| " + " | ".join(row_cells) + " |")
+                    
+                    # Insertar tabla
+                    table_text = "\n" + "\n".join(table_lines) + "\n\n"
+                    cursor.insertText(table_text)
+                    
+                    # Posicionar cursor al inicio de la primera celda de datos
+                    for _ in range(len(table_text) - 4):
+                        cursor.movePosition(QTextCursor.Left)
+                    
+                    self.editor.setTextCursor(cursor)
+                    
+        except Exception as e:
+            QMessageBox.warning(self.parent(), "Error", f"Error al crear tabla: {str(e)}")
+
+    def insert_horizontal_rule(self):
+        """Inserta una línea horizontal"""
+        cursor = self.editor.textCursor()
+        cursor.insertText("\n\n---\n\n")
