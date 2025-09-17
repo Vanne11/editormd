@@ -259,7 +259,7 @@ class EditorToolBar(QToolBar):
                 self.parent(), 
                 'Crear Tabla', 
                 'Número de filas:', 
-                value=3, min=2, max=10
+                value=3
             )
             
             if ok1:
@@ -267,7 +267,7 @@ class EditorToolBar(QToolBar):
                     self.parent(), 
                     'Crear Tabla', 
                     'Número de columnas:', 
-                    value=3, min=2, max=8
+                    value=3
                 )
                 
                 if ok2:
