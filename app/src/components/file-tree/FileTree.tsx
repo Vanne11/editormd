@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   ChevronRight,
   ChevronDown,
@@ -36,12 +36,17 @@ function FileTreeItem({ entry, depth, onFileClick }: FileTreeItemProps) {
   const [showActions, setShowActions] = useState(false);
   const [isCreating, setIsCreating] = useState<"file" | "folder" | null>(null);
   const [createValue, setCreateValue] = useState("");
+  const isSubmittingRef = useRef(false);
   const vaultPath = useVaultStore((s) => s.vaultPath);
   const refreshFileTree = useVaultStore((s) => s.refreshFileTree);
-  const activeTab = useEditorStore((s) => s.getActiveTab());
+  const activeTabPath = useEditorStore((s) => {
+    const tab = s.tabs.find((t) => t.id === s.activeTabId);
+    return tab?.path;
+  });
+  const openFile = useEditorStore((s) => s.openFile);
   const t = useSettingsStore((s) => s.t);
 
-  const isActive = !entry.is_dir && activeTab?.path === entry.path;
+  const isActive = !entry.is_dir && activeTabPath === entry.path;
 
   const handleClick = () => {
     if (entry.is_dir) {
@@ -80,10 +85,12 @@ function FileTreeItem({ entry, depth, onFileClick }: FileTreeItemProps) {
   };
 
   const handleCreate = async (type: "file" | "folder") => {
-    if (!vaultPath || !createValue.trim()) {
+    if (isSubmittingRef.current || !vaultPath || !createValue.trim()) {
       setIsCreating(null);
+      setCreateValue("");
       return;
     }
+    isSubmittingRef.current = true;
     const newPath = entry.is_dir
       ? `${entry.path}/${createValue}${type === "file" ? ".md" : ""}`
       : createValue;
@@ -95,11 +102,15 @@ function FileTreeItem({ entry, depth, onFileClick }: FileTreeItemProps) {
       }
       await refreshFileTree();
       if (entry.is_dir) setExpanded(true);
+      if (type === "file") {
+        await openFile(vaultPath, newPath);
+      }
     } catch (e) {
       console.error(e);
     }
     setIsCreating(null);
     setCreateValue("");
+    isSubmittingRef.current = false;
   };
 
   return (
@@ -223,8 +234,10 @@ function FileTreeItem({ entry, depth, onFileClick }: FileTreeItemProps) {
             value={createValue}
             onChange={(e) => setCreateValue(e.target.value)}
             onBlur={() => {
-              if (createValue.trim()) handleCreate(isCreating);
-              else setIsCreating(null);
+              if (!isSubmittingRef.current) {
+                setIsCreating(null);
+                setCreateValue("");
+              }
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter") handleCreate(isCreating);
@@ -262,6 +275,7 @@ export function FileTree() {
   const t = useSettingsStore((s) => s.t);
   const [isCreating, setIsCreating] = useState<"file" | "folder" | null>(null);
   const [createValue, setCreateValue] = useState("");
+  const isSubmittingRef = useRef(false);
 
   const handleFileClick = async (filePath: string) => {
     if (vaultPath) {
@@ -270,10 +284,12 @@ export function FileTree() {
   };
 
   const handleRootCreate = async (type: "file" | "folder") => {
-    if (!vaultPath || !createValue.trim()) {
+    if (isSubmittingRef.current || !vaultPath || !createValue.trim()) {
       setIsCreating(null);
+      setCreateValue("");
       return;
     }
+    isSubmittingRef.current = true;
     const newPath = type === "file" ? `${createValue}.md` : createValue;
     try {
       if (type === "file") {
@@ -282,11 +298,15 @@ export function FileTree() {
         await createFolder(vaultPath, newPath);
       }
       await refreshFileTree();
+      if (type === "file") {
+        await openFile(vaultPath, newPath);
+      }
     } catch (e) {
       console.error(e);
     }
     setIsCreating(null);
     setCreateValue("");
+    isSubmittingRef.current = false;
   };
 
   return (
@@ -329,8 +349,10 @@ export function FileTree() {
                 value={createValue}
                 onChange={(e) => setCreateValue(e.target.value)}
                 onBlur={() => {
-                  if (createValue.trim()) handleRootCreate(isCreating);
-                  else setIsCreating(null);
+                  if (!isSubmittingRef.current) {
+                    setIsCreating(null);
+                    setCreateValue("");
+                  }
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleRootCreate(isCreating);

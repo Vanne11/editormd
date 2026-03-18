@@ -11,6 +11,9 @@ export const es = {
     delete: "Eliminar",
     noteName: "nombre-nota",
     folderName: "nombre-carpeta",
+    importFile: "Importar archivo",
+    exportFile: "Exportar nota",
+    settings: "Configuración",
   },
   editor: {
     openVaultToStart: "Abre una bóveda para comenzar",

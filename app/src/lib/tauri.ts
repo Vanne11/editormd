@@ -56,3 +56,18 @@ export async function renameFile(
 ): Promise<void> {
   return invoke("rename_file", { vaultPath, oldPath, newPath });
 }
+
+export async function importFile(
+  vaultPath: string,
+  sourcePath: string
+): Promise<string> {
+  return invoke("import_file", { vaultPath, sourcePath });
+}
+
+export async function exportFile(
+  vaultPath: string,
+  filePath: string,
+  destPath: string
+): Promise<void> {
+  return invoke("export_file", { vaultPath, filePath, destPath });
+}

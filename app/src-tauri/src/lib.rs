@@ -30,6 +30,8 @@ pub fn run() {
             files::create_folder,
             files::delete_file,
             files::rename_file,
+            files::import_file,
+            files::export_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -11,6 +11,9 @@ export const en = {
     delete: "Delete",
     noteName: "note-name",
     folderName: "folder-name",
+    importFile: "Import file",
+    exportFile: "Export note",
+    settings: "Settings",
   },
   editor: {
     openVaultToStart: "Open a vault to get started",
