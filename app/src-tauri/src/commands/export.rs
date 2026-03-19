@@ -46,6 +46,7 @@ pub fn export_as_pdf(
     vault_path: String,
     file_path: String,
     dest_path: String,
+    mermaid_images: Vec<String>,
 ) -> Result<(), String> {
     let source = Path::new(&vault_path).join(&file_path);
     if !source.exists() {
@@ -68,7 +69,11 @@ pub fn export_as_pdf(
     decorator.set_margins(genpdf::Margins::trbl(20, 15, 20, 15));
     doc.set_page_decorator(decorator);
 
-    render_markdown_to_pdf(&mut doc, &markdown, &vault_path);
+    log::info!("[mermaid] export_as_pdf: recibidas {} imágenes mermaid", mermaid_images.len());
+    for (i, img) in mermaid_images.iter().enumerate() {
+        log::info!("[mermaid] imagen[{}] len={}", i, img.len());
+    }
+    render_markdown_to_pdf(&mut doc, &markdown, &vault_path, &mermaid_images);
 
     ensure_parent(&dest_path)?;
     doc.render_to_file(&dest_path)
@@ -80,6 +85,7 @@ pub fn export_as_docx(
     vault_path: String,
     file_path: String,
     dest_path: String,
+    mermaid_images: Vec<String>,
 ) -> Result<(), String> {
     let source = Path::new(&vault_path).join(&file_path);
     if !source.exists() {
@@ -88,7 +94,7 @@ pub fn export_as_docx(
     let markdown =
         fs::read_to_string(&source).map_err(|e| format!("Error al leer archivo: {}", e))?;
 
-    let docx = render_markdown_to_docx(&markdown, &vault_path);
+    let docx = render_markdown_to_docx(&markdown, &vault_path, &mermaid_images);
 
     ensure_parent(&dest_path)?;
     let file = fs::File::create(&dest_path)
@@ -171,7 +177,7 @@ fn load_font_family() -> Result<genpdf::fonts::FontFamily<genpdf::fonts::FontDat
         })
 }
 
-fn render_markdown_to_pdf(doc: &mut genpdf::Document, markdown: &str, vault_path: &str) {
+fn render_markdown_to_pdf(doc: &mut genpdf::Document, markdown: &str, vault_path: &str, mermaid_images: &[String]) {
     use genpdf::elements;
     use genpdf::style;
     use genpdf::Element as _;
@@ -188,6 +194,7 @@ fn render_markdown_to_pdf(doc: &mut genpdf::Document, markdown: &str, vault_path
     let mut current_paragraph_parts: Vec<(String, style::Style)> = Vec::new();
     let mut list_ordered = false;
     let mut list_item_idx = 0u32;
+    let mut mermaid_idx = 0usize;
 
     for event in parser {
         match event {
@@ -236,17 +243,25 @@ fn render_markdown_to_pdf(doc: &mut genpdf::Document, markdown: &str, vault_path
                 in_code_block = false;
                 if in_mermaid_block {
                     in_mermaid_block = false;
-                    doc.push(
-                        elements::Paragraph::new("[Diagrama Mermaid - ver exportación HTML]")
-                            .styled(style::Style::new().italic().with_font_size(9)),
-                    );
+                    let svg_str = mermaid_images.get(mermaid_idx).map(|s| s.as_str()).unwrap_or("");
+                    mermaid_idx += 1;
+                    if !svg_str.is_empty() {
+                        if let Some((genpdf_img, scale)) = load_mermaid_for_pdf(svg_str) {
+                            doc.push(
+                                genpdf_img
+                                    .with_scale(genpdf::Scale::new(scale, scale))
+                                    .with_alignment(genpdf::Alignment::Center),
+                            );
+                            doc.push(elements::Break::new(0.3));
+                        }
+                    }
                 } else {
                     doc.push(
                         elements::Paragraph::new(&code_block_text)
                             .styled(style::Style::new().with_font_size(9)),
                     );
+                    doc.push(elements::Break::new(0.3));
                 }
-                doc.push(elements::Break::new(0.3));
                 code_block_text.clear();
             }
             Event::Start(Tag::List(ordered)) => {
@@ -361,7 +376,7 @@ fn flush_paragraph(
     doc.push(paragraph);
 }
 
-fn render_markdown_to_docx(markdown: &str, vault_path: &str) -> docx_rs::Docx {
+fn render_markdown_to_docx(markdown: &str, vault_path: &str, mermaid_images: &[String]) -> docx_rs::Docx {
     use docx_rs::*;
 
     let parser = Parser::new_ext(markdown, super::convert::md_options());
@@ -373,10 +388,12 @@ fn render_markdown_to_docx(markdown: &str, vault_path: &str) -> docx_rs::Docx {
     let mut in_image = false;
     let mut heading_level: Option<u8> = None;
     let mut in_code_block = false;
+    let mut in_mermaid_block = false;
     let mut code_block_text = String::new();
     let mut current_runs: Vec<Run> = Vec::new();
     let mut list_ordered = false;
     let mut list_item_idx = 0u32;
+    let mut mermaid_idx = 0usize;
 
     for event in parser {
         match event {
@@ -399,20 +416,36 @@ fn render_markdown_to_docx(markdown: &str, vault_path: &str) -> docx_rs::Docx {
             Event::End(TagEnd::Emphasis) => italic = false,
             Event::Start(Tag::Strikethrough) => strikethrough = true,
             Event::End(TagEnd::Strikethrough) => strikethrough = false,
-            Event::Start(Tag::CodeBlock(_)) => {
+            Event::Start(Tag::CodeBlock(kind)) => {
                 flush_docx_paragraph(&mut docx, &mut current_runs, None);
+                let lang = match &kind {
+                    pulldown_cmark::CodeBlockKind::Fenced(lang) => lang.as_ref(),
+                    _ => "",
+                };
+                in_mermaid_block = lang == "mermaid";
                 in_code_block = true;
                 code_block_text.clear();
             }
             Event::End(TagEnd::CodeBlock) => {
                 in_code_block = false;
-                // Agregar bloque de código como párrafo con fuente monospace
-                for line in code_block_text.lines() {
-                    let run = Run::new()
-                        .add_text(line)
-                        .size(18) // 9pt (half-points)
-                        .fonts(RunFonts::new().ascii("Courier New"));
-                    docx = docx.add_paragraph(Paragraph::new().add_run(run));
+                if in_mermaid_block {
+                    in_mermaid_block = false;
+                    let svg_str = mermaid_images.get(mermaid_idx).map(|s| s.as_str()).unwrap_or("");
+                    mermaid_idx += 1;
+                    if !svg_str.is_empty() {
+                        if let Some(pic) = load_mermaid_for_docx(svg_str) {
+                            let run = Run::new().add_image(pic);
+                            docx = docx.add_paragraph(Paragraph::new().add_run(run));
+                        }
+                    }
+                } else {
+                    for line in code_block_text.lines() {
+                        let run = Run::new()
+                            .add_text(line)
+                            .size(18)
+                            .fonts(RunFonts::new().ascii("Courier New"));
+                        docx = docx.add_paragraph(Paragraph::new().add_run(run));
+                    }
                 }
                 code_block_text.clear();
             }
@@ -650,6 +683,91 @@ fn load_image_for_docx(path: &Path) -> Option<docx_rs::Pic> {
     }
 
     Some(docx_rs::Pic::new_with_dimensions(png_buf.into_inner(), w, h))
+}
+
+/// Rasteriza SVG a bytes PNG usando resvg
+fn svg_to_png_bytes(svg_str: &str) -> Option<(Vec<u8>, u32, u32)> {
+    log::info!("[mermaid] svg_to_png_bytes llamado, SVG len={}", svg_str.len());
+    if svg_str.is_empty() {
+        log::warn!("[mermaid] SVG vacío, retornando None");
+        return None;
+    }
+    log::info!("[mermaid] SVG primeros 200 chars: {}", &svg_str[..svg_str.len().min(200)]);
+
+    let mut opts = resvg::usvg::Options::default();
+    // Cargar fuentes del sistema para que resvg pueda renderizar texto
+    let mut fontdb = resvg::usvg::fontdb::Database::new();
+    fontdb.load_system_fonts();
+    log::info!("[mermaid] fontdb cargada con {} fuentes", fontdb.len());
+    opts.fontdb = std::sync::Arc::new(fontdb);
+
+    let tree = match resvg::usvg::Tree::from_str(svg_str, &opts) {
+        Ok(t) => t,
+        Err(e) => {
+            log::error!("[mermaid] No se pudo parsear SVG: {}", e);
+            return None;
+        }
+    };
+    let size = tree.size();
+    let (w, h) = (size.width() as u32, size.height() as u32);
+    log::info!("[mermaid] Dimensiones: {}x{}", w, h);
+    if w == 0 || h == 0 {
+        log::warn!("[mermaid] Dimensiones 0, retornando None");
+        return None;
+    }
+    // Escalar 2x para buena calidad
+    let scale = 2.0;
+    let sw = (w as f32 * scale) as u32;
+    let sh = (h as f32 * scale) as u32;
+    let mut pixmap = resvg::tiny_skia::Pixmap::new(sw, sh)?;
+    pixmap.fill(resvg::tiny_skia::Color::WHITE);
+    let transform = resvg::tiny_skia::Transform::from_scale(scale, scale);
+    resvg::render(&tree, transform, &mut pixmap.as_mut());
+
+    // Convertir RGBA → RGB (genpdf no soporta alpha)
+    let rgba = pixmap.data();
+    let rgb: Vec<u8> = rgba.chunks(4).flat_map(|px| [px[0], px[1], px[2]]).collect();
+    let mut png_buf: Vec<u8> = Vec::new();
+    {
+        let mut encoder = png::Encoder::new(&mut png_buf, sw, sh);
+        encoder.set_color(png::ColorType::Rgb);
+        encoder.set_depth(png::BitDepth::Eight);
+        let mut writer = encoder.write_header().ok()?;
+        writer.write_image_data(&rgb).ok()?;
+    }
+    Some((png_buf, sw, sh))
+}
+
+/// Carga SVG mermaid como imagen para genpdf
+fn load_mermaid_for_pdf(svg_str: &str) -> Option<(genpdf::elements::Image, f64)> {
+    use std::io::Cursor;
+
+    let (png, px_w, _) = svg_to_png_bytes(svg_str)?;
+    let genpdf_img = match genpdf::elements::Image::from_reader(Cursor::new(png)) {
+        Ok(i) => i,
+        Err(e) => {
+            log::error!("genpdf no pudo cargar imagen mermaid: {}", e);
+            return None;
+        }
+    };
+
+    let dpi = 96.0;
+    let mmpi = 25.4;
+    let max_width_mm = 180.0;
+    let img_width_mm = (px_w as f64 / dpi) * mmpi;
+    let scale = if img_width_mm > max_width_mm {
+        max_width_mm / img_width_mm
+    } else {
+        1.0
+    };
+
+    Some((genpdf_img, scale))
+}
+
+/// Carga SVG mermaid como imagen para DOCX
+fn load_mermaid_for_docx(svg_str: &str) -> Option<docx_rs::Pic> {
+    let (png, w, h) = svg_to_png_bytes(svg_str)?;
+    Some(docx_rs::Pic::new_with_dimensions(png, w, h))
 }
 
 #[cfg(test)]

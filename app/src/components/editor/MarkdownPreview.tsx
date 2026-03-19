@@ -23,6 +23,8 @@ function initMermaid(appTheme: Theme) {
     startOnLoad: false,
     theme: mermaidThemeMap[appTheme] || "dark",
     securityLevel: "loose",
+    flowchart: { htmlLabels: false },
+    sequence: { useMaxWidth: false },
   });
 }
 

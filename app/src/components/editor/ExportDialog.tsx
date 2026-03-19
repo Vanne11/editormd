@@ -21,6 +21,7 @@ import {
   exportAsPdf,
   exportAsDocx,
 } from "@/lib/tauri";
+import { getMermaidSvgsFromPreview } from "@/lib/mermaid-render";
 
 interface ExportDialogProps {
   open: boolean;
@@ -69,6 +70,12 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
 
     setStatus("exporting");
     try {
+      // Extraer SVGs de mermaid ya renderizados en el preview
+      let mermaidImages: string[] = [];
+      if (selectedFormat === "pdf" || selectedFormat === "docx") {
+        mermaidImages = getMermaidSvgsFromPreview();
+      }
+
       switch (selectedFormat) {
         case "md":
           await exportFile(vaultPath, activeTab.path, destPath);
@@ -80,10 +87,10 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
           await exportAsHtml(vaultPath, activeTab.path, destPath);
           break;
         case "pdf":
-          await exportAsPdf(vaultPath, activeTab.path, destPath);
+          await exportAsPdf(vaultPath, activeTab.path, destPath, mermaidImages);
           break;
         case "docx":
-          await exportAsDocx(vaultPath, activeTab.path, destPath);
+          await exportAsDocx(vaultPath, activeTab.path, destPath, mermaidImages);
           break;
       }
       setStatus("success");

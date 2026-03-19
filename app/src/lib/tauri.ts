@@ -112,15 +112,17 @@ export async function exportAsHtml(
 export async function exportAsPdf(
   vaultPath: string,
   filePath: string,
-  destPath: string
+  destPath: string,
+  mermaidImages: string[] = []
 ): Promise<void> {
-  return invoke("export_as_pdf", { vaultPath, filePath, destPath });
+  return invoke("export_as_pdf", { vaultPath, filePath, destPath, mermaidImages });
 }
 
 export async function exportAsDocx(
   vaultPath: string,
   filePath: string,
-  destPath: string
+  destPath: string,
+  mermaidImages: string[] = []
 ): Promise<void> {
-  return invoke("export_as_docx", { vaultPath, filePath, destPath });
+  return invoke("export_as_docx", { vaultPath, filePath, destPath, mermaidImages });
 }

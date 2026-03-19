@@ -31,3 +31,5 @@ genpdf = { version = "0.2", features = ["images"] }
 image = "0.25"
 docx-rs = "0.4"
 html2md = "0.2"
+resvg = "0.44"
+png = "0.18.1"
