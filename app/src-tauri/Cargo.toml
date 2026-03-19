@@ -28,5 +28,6 @@ walkdir = "2"
 base64 = "0.22"
 pulldown-cmark = "0.13"
 genpdf = { version = "0.2", features = ["images"] }
+image = "0.23"
 docx-rs = "0.4"
 html2md = "0.2"

@@ -182,6 +182,7 @@ fn render_markdown_to_pdf(doc: &mut genpdf::Document, markdown: &str, vault_path
     let mut italic = false;
     let mut heading_level: Option<u8> = None;
     let mut in_code_block = false;
+    let mut in_image = false;
     let mut code_block_text = String::new();
     let mut current_paragraph_parts: Vec<(String, style::Style)> = Vec::new();
     let mut list_ordered = false;
@@ -272,7 +273,9 @@ fn render_markdown_to_pdf(doc: &mut genpdf::Document, markdown: &str, vault_path
                 ));
             }
             Event::Text(text) => {
-                if in_code_block {
+                if in_image {
+                    // Skip alt text of images
+                } else if in_code_block {
                     code_block_text.push_str(&text);
                 } else {
                     let mut s = style::Style::new();
@@ -305,16 +308,25 @@ fn render_markdown_to_pdf(doc: &mut genpdf::Document, markdown: &str, vault_path
             }
             Event::Start(Tag::Image { dest_url, .. }) => {
                 flush_paragraph(doc, &mut current_paragraph_parts);
+                in_image = true;
                 if let Some(img_path) =
                     super::convert::resolve_image_path(&dest_url, vault_path)
                 {
-                    if let Ok(img) = elements::Image::from_path(&img_path) {
+                    // Intentar cargar directamente, si falla (alpha/formato)
+                    // convertir a RGB JPEG primero
+                    let img_result = elements::Image::from_path(&img_path)
+                        .or_else(|_| {
+                            load_image_as_rgb_jpeg(&img_path)
+                        });
+                    if let Ok(img) = img_result {
                         doc.push(img.with_alignment(genpdf::Alignment::Center));
                         doc.push(elements::Break::new(0.3));
                     }
                 }
             }
-            Event::End(TagEnd::Image) => {}
+            Event::End(TagEnd::Image) => {
+                in_image = false;
+            }
             _ => {}
         }
     }
@@ -345,6 +357,7 @@ fn render_markdown_to_docx(markdown: &str, vault_path: &str) -> docx_rs::Docx {
     let mut bold = false;
     let mut italic = false;
     let mut strikethrough = false;
+    let mut in_image = false;
     let mut heading_level: Option<u8> = None;
     let mut in_code_block = false;
     let mut code_block_text = String::new();
@@ -422,7 +435,9 @@ fn render_markdown_to_docx(markdown: &str, vault_path: &str) -> docx_rs::Docx {
                 current_runs.push(run);
             }
             Event::Text(text) => {
-                if in_code_block {
+                if in_image {
+                    // Skip alt text of images
+                } else if in_code_block {
                     code_block_text.push_str(&text);
                 } else {
                     let mut run = Run::new().add_text(text.to_string());
@@ -475,6 +490,7 @@ fn render_markdown_to_docx(markdown: &str, vault_path: &str) -> docx_rs::Docx {
             }
             Event::Start(Tag::Image { dest_url, .. }) => {
                 flush_docx_paragraph(&mut docx, &mut current_runs, None);
+                in_image = true;
                 if let Some(img_path) =
                     super::convert::resolve_image_path(&dest_url, vault_path)
                 {
@@ -485,7 +501,9 @@ fn render_markdown_to_docx(markdown: &str, vault_path: &str) -> docx_rs::Docx {
                     }
                 }
             }
-            Event::End(TagEnd::Image) => {}
+            Event::End(TagEnd::Image) => {
+                in_image = false;
+            }
             _ => {}
         }
     }
@@ -509,4 +527,23 @@ fn flush_docx_paragraph(
         p = p.add_run(run);
     }
     *docx = std::mem::take(docx).add_paragraph(p);
+}
+
+/// Carga una imagen y la convierte a RGB JPEG sin alpha para genpdf
+fn load_image_as_rgb_jpeg(path: &Path) -> Result<genpdf::elements::Image, genpdf::error::Error> {
+    let data = fs::read(path).map_err(|e| {
+        genpdf::error::Error::new(
+            format!("Cannot read image: {}", e),
+            genpdf::error::ErrorKind::InvalidData,
+        )
+    })?;
+    let img = image::load_from_memory(&data).map_err(|e| {
+        genpdf::error::Error::new(
+            format!("Cannot decode image: {}", e),
+            genpdf::error::ErrorKind::InvalidData,
+        )
+    })?;
+    // Convertir a RGB (quita alpha)
+    let rgb = image::DynamicImage::ImageRgb8(img.to_rgb8());
+    genpdf::elements::Image::from_dynamic_image(rgb)
 }
