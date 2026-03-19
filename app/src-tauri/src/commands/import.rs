@@ -31,6 +31,32 @@ fn copy_with_dedup(source: &Path, dest_dir: &Path, file_name: &str) -> Result<Pa
     Ok(final_dest)
 }
 
+fn save_as_md(vault: &Path, vault_path: &str, stem: &str, content: &str) -> Result<String, String> {
+    let md_name = format!("{}.md", stem);
+    let dest = vault.join(&md_name);
+    let final_dest = if dest.exists() {
+        let mut counter = 1u32;
+        loop {
+            let new_name = format!("{}-{}.md", stem, counter);
+            let candidate = vault.join(&new_name);
+            if !candidate.exists() {
+                break candidate;
+            }
+            counter += 1;
+        }
+    } else {
+        dest
+    };
+    fs::write(&final_dest, content)
+        .map_err(|e| format!("Error al escribir MD: {}", e))?;
+    let relative = final_dest
+        .strip_prefix(vault_path)
+        .unwrap_or(&final_dest)
+        .to_string_lossy()
+        .to_string();
+    Ok(relative)
+}
+
 #[tauri::command]
 pub fn import_file_smart(vault_path: String, source_path: String) -> Result<ImportResult, String> {
     let source = Path::new(&source_path);
@@ -53,7 +79,7 @@ pub fn import_file_smart(vault_path: String, source_path: String) -> Result<Impo
     let vault = Path::new(&vault_path);
 
     match ext.as_str() {
-        // Text files that can be opened directly
+        // Text files — copia directa
         "md" | "markdown" | "txt" => {
             let final_dest = copy_with_dedup(source, vault, &file_name)?;
             let relative = final_dest
@@ -67,17 +93,31 @@ pub fn import_file_smart(vault_path: String, source_path: String) -> Result<Impo
                 original_format: ext,
             })
         }
-        // Convertible formats via pandoc
-        "html" | "htm" | "docx" | "org" | "rst" => {
+        // HTML — conversión nativa con html2md
+        "html" | "htm" => {
+            let html_content = fs::read_to_string(source)
+                .map_err(|e| format!("Error al leer HTML: {}", e))?;
+            let md_content = super::convert::html_to_markdown(&html_content);
+            let stem = source
+                .file_stem()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string();
+            let relative = save_as_md(vault, &vault_path, &stem, &md_content)?;
+            Ok(ImportResult {
+                relative_path: relative,
+                was_converted: true,
+                original_format: ext,
+            })
+        }
+        // Formatos que requieren pandoc (DOCX, ORG, RST)
+        "docx" | "org" | "rst" => {
             let pandoc_format = match ext.as_str() {
-                "html" | "htm" => "html",
                 "docx" => "docx",
                 "org" => "org",
                 "rst" => "rst",
                 _ => unreachable!(),
             };
-
-            // Try pandoc conversion
             let pandoc_result = std::process::Command::new("pandoc")
                 .args(["-f", pandoc_format, "-t", "markdown", "--wrap=none", &source_path])
                 .output();
@@ -90,28 +130,7 @@ pub fn import_file_smart(vault_path: String, source_path: String) -> Result<Impo
                         .unwrap_or_default()
                         .to_string_lossy()
                         .to_string();
-                    let md_name = format!("{}.md", stem);
-                    let dest = vault.join(&md_name);
-                    let final_dest = if dest.exists() {
-                        let mut counter = 1u32;
-                        loop {
-                            let new_name = format!("{}-{}.md", stem, counter);
-                            let candidate = vault.join(&new_name);
-                            if !candidate.exists() {
-                                break candidate;
-                            }
-                            counter += 1;
-                        }
-                    } else {
-                        dest
-                    };
-                    fs::write(&final_dest, md_content)
-                        .map_err(|e| format!("Error al escribir MD: {}", e))?;
-                    let relative = final_dest
-                        .strip_prefix(&vault_path)
-                        .unwrap_or(&final_dest)
-                        .to_string_lossy()
-                        .to_string();
+                    let relative = save_as_md(vault, &vault_path, &stem, &md_content)?;
                     Ok(ImportResult {
                         relative_path: relative,
                         was_converted: true,
@@ -119,27 +138,14 @@ pub fn import_file_smart(vault_path: String, source_path: String) -> Result<Impo
                     })
                 }
                 _ => {
-                    // Pandoc not available or failed - for HTML, return special marker
-                    // so frontend can do the conversion
-                    if ext == "html" || ext == "htm" {
-                        // Read HTML content and return it with a special path prefix
-                        let html_content = fs::read_to_string(source)
-                            .map_err(|e| format!("Error al leer HTML: {}", e))?;
-                        Ok(ImportResult {
-                            relative_path: format!("__html_convert__:{}", html_content),
-                            was_converted: false,
-                            original_format: ext,
-                        })
-                    } else {
-                        Err(format!(
-                            "Se requiere pandoc para convertir archivos .{}. Instálalo con tu gestor de paquetes.",
-                            ext
-                        ))
-                    }
+                    Err(format!(
+                        "Se requiere pandoc para importar archivos .{}. Instálalo con tu gestor de paquetes.",
+                        ext
+                    ))
                 }
             }
         }
-        // Binary files → attachments/
+        // Binarios → attachments/
         _ => {
             let attachments_dir = vault.join("attachments");
             fs::create_dir_all(&attachments_dir)

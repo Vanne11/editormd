@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   FileText,
   FileType,
@@ -15,14 +15,12 @@ import { useEditorStore } from "@/stores/editor-store";
 import { useVaultStore } from "@/stores/vault-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import {
-  checkPandocAvailable,
   exportFile,
   exportAsTxt,
   exportAsHtml,
   exportAsPdf,
   exportAsDocx,
 } from "@/lib/tauri";
-import { markdownToHtmlDocument } from "@/lib/export-html";
 
 interface ExportDialogProps {
   open: boolean;
@@ -34,36 +32,25 @@ type ExportFormat = "md" | "txt" | "html" | "pdf" | "docx";
 interface FormatOption {
   id: ExportFormat;
   icon: typeof File;
-  needsPandoc: boolean;
   ext: string;
 }
 
 const FORMATS: FormatOption[] = [
-  { id: "md", icon: FileText, needsPandoc: false, ext: "md" },
-  { id: "txt", icon: FileText, needsPandoc: false, ext: "txt" },
-  { id: "html", icon: FileCode, needsPandoc: false, ext: "html" },
-  { id: "pdf", icon: FileType, needsPandoc: true, ext: "pdf" },
-  { id: "docx", icon: FileText, needsPandoc: true, ext: "docx" },
+  { id: "md", icon: FileText, ext: "md" },
+  { id: "txt", icon: FileText, ext: "txt" },
+  { id: "html", icon: FileCode, ext: "html" },
+  { id: "pdf", icon: FileType, ext: "pdf" },
+  { id: "docx", icon: FileText, ext: "docx" },
 ];
 
 export function ExportDialog({ open, onClose }: ExportDialogProps) {
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>("md");
-  const [hasPandoc, setHasPandoc] = useState<boolean | null>(null);
   const [status, setStatus] = useState<"idle" | "exporting" | "success" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
 
   const activeTab = useEditorStore((s) => s.tabs.find((t) => t.id === s.activeTabId));
   const vaultPath = useVaultStore((s) => s.vaultPath);
   const t = useSettingsStore((s) => s.t);
-
-  useEffect(() => {
-    if (open) {
-      checkPandocAvailable().then(setHasPandoc).catch(() => setHasPandoc(false));
-      setStatus("idle");
-      setErrorMsg("");
-      setSelectedFormat("md");
-    }
-  }, [open]);
 
   if (!open || !activeTab) return null;
 
@@ -89,11 +76,9 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
         case "txt":
           await exportAsTxt(vaultPath, activeTab.path, destPath);
           break;
-        case "html": {
-          const htmlDoc = markdownToHtmlDocument(activeTab.content, baseName);
-          await exportAsHtml(vaultPath, activeTab.path, destPath, htmlDoc);
+        case "html":
+          await exportAsHtml(vaultPath, activeTab.path, destPath);
           break;
-        }
         case "pdf":
           await exportAsPdf(vaultPath, activeTab.path, destPath);
           break;
@@ -102,11 +87,25 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
           break;
       }
       setStatus("success");
-      setTimeout(() => onClose(), 1200);
+      setTimeout(() => {
+        onClose();
+        setStatus("idle");
+      }, 1200);
     } catch (e) {
       setStatus("error");
       setErrorMsg(String(e));
     }
+  };
+
+  const formatLabel = (id: ExportFormat) => {
+    const labels: Record<ExportFormat, keyof typeof t.export> = {
+      md: "markdown",
+      txt: "plainText",
+      html: "html",
+      pdf: "pdf",
+      docx: "docx",
+    };
+    return t.export[labels[id]];
   };
 
   return (
@@ -124,28 +123,19 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
 
         <div className="space-y-1 mb-4">
           {FORMATS.map((format) => {
-            const disabled = format.needsPandoc && !hasPandoc;
             const Icon = format.icon;
             return (
               <button
                 key={format.id}
-                disabled={disabled}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded text-sm text-left transition-colors ${
+                className={`w-full flex items-center gap-2 px-3 py-2 rounded text-sm text-left transition-colors cursor-pointer ${
                   selectedFormat === format.id
                     ? "bg-accent text-accent-foreground"
-                    : disabled
-                    ? "opacity-40 cursor-not-allowed"
-                    : "hover:bg-accent/50 cursor-pointer"
+                    : "hover:bg-accent/50"
                 }`}
-                onClick={() => !disabled && setSelectedFormat(format.id)}
+                onClick={() => setSelectedFormat(format.id)}
               >
                 <Icon className="size-4 shrink-0" />
-                <span className="flex-1">{t.export[format.id === "txt" ? "plainText" : format.id === "docx" ? "docx" : format.id]}</span>
-                {format.needsPandoc && (
-                  <span className="text-xs text-muted-foreground">
-                    {hasPandoc === false ? t.export.requiresPandoc : "pandoc"}
-                  </span>
-                )}
+                <span className="flex-1">{formatLabel(format.id)}</span>
               </button>
             );
           })}
@@ -154,7 +144,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
         {status === "error" && (
           <div className="flex items-center gap-2 text-destructive text-xs mb-3 p-2 bg-destructive/10 rounded">
             <AlertCircle className="size-3.5 shrink-0" />
-            <span>{errorMsg || t.export.error}</span>
+            <span className="break-all">{errorMsg || t.export.error}</span>
           </div>
         )}
 

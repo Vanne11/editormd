@@ -70,10 +70,8 @@ export const es = {
     docx: "Word (.docx)",
     exportBtn: "Exportar",
     cancel: "Cancelar",
-    requiresPandoc: "Requiere pandoc",
     success: "Exportado correctamente",
     error: "Error al exportar",
-    pandocNotAvailable: "Pandoc no está instalado. Instálalo para habilitar este formato.",
   },
   import: {
     converting: "Convirtiendo...",

@@ -93,10 +93,6 @@ export async function importFileSmart(
   return invoke("import_file_smart", { vaultPath, sourcePath });
 }
 
-export async function checkPandocAvailable(): Promise<boolean> {
-  return invoke("check_pandoc_available");
-}
-
 export async function exportAsTxt(
   vaultPath: string,
   filePath: string,
@@ -108,10 +104,9 @@ export async function exportAsTxt(
 export async function exportAsHtml(
   vaultPath: string,
   filePath: string,
-  destPath: string,
-  htmlContent: string
+  destPath: string
 ): Promise<void> {
-  return invoke("export_as_html", { vaultPath, filePath, destPath, htmlContent });
+  return invoke("export_as_html", { vaultPath, filePath, destPath });
 }
 
 export async function exportAsPdf(

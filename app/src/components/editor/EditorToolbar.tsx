@@ -35,8 +35,7 @@ import { useEditorStore } from "@/stores/editor-store";
 import { useVaultStore } from "@/stores/vault-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { executeMarkdownAction, insertImageReference } from "@/lib/markdown-commands";
-import { importImage, importFileSmart, writeFile } from "@/lib/tauri";
-import { htmlToMarkdown } from "@/lib/html-to-markdown";
+import { importImage, importFileSmart } from "@/lib/tauri";
 import { ExportDialog } from "./ExportDialog";
 import type { ViewMode } from "@/types";
 
@@ -129,22 +128,10 @@ export function EditorToolbar() {
       if (typeof filePath === "string") {
         try {
           const result = await importFileSmart(vaultPath, filePath);
-          // Handle HTML fallback (frontend conversion when pandoc unavailable)
-          if (!result.was_converted && result.relative_path.startsWith("__html_convert__:")) {
-            const htmlContent = result.relative_path.slice("__html_convert__:".length);
-            const md = htmlToMarkdown(htmlContent);
-            const fileName = filePath.split("/").pop()?.replace(/\.[^.]+$/, "") || "imported";
-            const mdPath = `${fileName}.md`;
-            await writeFile(vaultPath, mdPath, md);
-            await refreshFileTree();
-            await openFile(vaultPath, mdPath);
-          } else {
-            await refreshFileTree();
-            // Only open editable files in the editor
-            const ext = result.original_format;
-            if (["md", "markdown", "txt", "html", "htm", "docx", "org", "rst"].includes(ext) || result.was_converted) {
-              await openFile(vaultPath, result.relative_path);
-            }
+          await refreshFileTree();
+          // Abrir en editor si fue convertido o es editable
+          if (result.was_converted || ["md", "markdown", "txt"].includes(result.original_format)) {
+            await openFile(vaultPath, result.relative_path);
           }
         } catch (e) {
           console.error("Error importing:", e);

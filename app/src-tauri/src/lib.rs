@@ -3,7 +3,6 @@ mod models;
 
 use commands::files;
 use commands::vault;
-use commands::convert;
 use commands::import;
 use commands::export;
 
@@ -37,8 +36,6 @@ pub fn run() {
             files::import_image,
             files::export_file,
             files::read_image_base64,
-            convert::check_pandoc_available,
-            convert::convert_to_markdown,
             import::import_file_smart,
             export::export_as_txt,
             export::export_as_html,
