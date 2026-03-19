@@ -1,15 +1,22 @@
 use pulldown_cmark::{html, Options, Parser};
+use std::path::Path;
 
-/// Convierte markdown a HTML standalone
-pub fn markdown_to_html(markdown: &str, title: &str) -> String {
+pub fn md_options() -> Options {
     let mut options = Options::empty();
     options.insert(Options::ENABLE_TABLES);
     options.insert(Options::ENABLE_STRIKETHROUGH);
     options.insert(Options::ENABLE_TASKLISTS);
+    options
+}
 
-    let parser = Parser::new_ext(markdown, options);
+/// Convierte markdown a HTML standalone con imágenes embebidas como base64
+pub fn markdown_to_html(markdown: &str, title: &str, vault_path: &str) -> String {
+    let parser = Parser::new_ext(markdown, md_options());
     let mut body = String::new();
     html::push_html(&mut body, parser);
+
+    // Post-procesar: reemplazar src de imágenes locales con base64
+    body = embed_local_images_html(&body, vault_path);
 
     format!(
         r#"<!DOCTYPE html>
@@ -42,6 +49,73 @@ pub fn markdown_to_html(markdown: &str, title: &str) -> String {
 /// Convierte HTML a Markdown usando html2md
 pub fn html_to_markdown(html: &str) -> String {
     html2md::parse_html(html)
+}
+
+/// Resuelve una ruta de imagen relativa al vault
+pub fn resolve_image_path(src: &str, vault_path: &str) -> Option<std::path::PathBuf> {
+    // Ignorar URLs externas
+    if src.starts_with("http://") || src.starts_with("https://") || src.starts_with("data:") {
+        return None;
+    }
+    let path = Path::new(vault_path).join(src);
+    if path.exists() {
+        Some(path)
+    } else {
+        None
+    }
+}
+
+/// Obtiene el MIME type de una imagen por extensión
+pub fn mime_for_image(path: &Path) -> &'static str {
+    match path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase()
+        .as_str()
+    {
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "gif" => "image/gif",
+        "svg" => "image/svg+xml",
+        "webp" => "image/webp",
+        "bmp" => "image/bmp",
+        _ => "application/octet-stream",
+    }
+}
+
+/// Reemplaza rutas de imágenes locales en HTML con data URIs base64
+fn embed_local_images_html(html: &str, vault_path: &str) -> String {
+    use base64::Engine;
+
+    let mut result = html.to_string();
+    // Buscar patrones src="..." en tags img
+    let mut search_from = 0;
+    while let Some(src_pos) = result[search_from..].find("src=\"") {
+        let abs_pos = search_from + src_pos + 5; // después de src="
+        if let Some(end_quote) = result[abs_pos..].find('"') {
+            let src = result[abs_pos..abs_pos + end_quote].to_string();
+            if let Some(img_path) = resolve_image_path(&src, vault_path) {
+                if let Ok(data) = std::fs::read(&img_path) {
+                    let mime = mime_for_image(&img_path);
+                    let b64 = base64::engine::general_purpose::STANDARD.encode(&data);
+                    let data_uri = format!("data:{};base64,{}", mime, b64);
+                    result = format!(
+                        "{}{}{}",
+                        &result[..abs_pos],
+                        data_uri,
+                        &result[abs_pos + end_quote..]
+                    );
+                    search_from = abs_pos + data_uri.len() + 1;
+                    continue;
+                }
+            }
+            search_from = abs_pos + end_quote + 1;
+        } else {
+            break;
+        }
+    }
+    result
 }
 
 fn escape_html(text: &str) -> String {

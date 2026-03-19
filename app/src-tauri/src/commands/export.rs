@@ -2,7 +2,7 @@ use std::fs;
 use std::io::BufWriter;
 use std::path::Path;
 
-use pulldown_cmark::{Event, Options, Parser, Tag, TagEnd};
+use pulldown_cmark::{Event, Parser, Tag, TagEnd};
 
 #[tauri::command]
 pub fn export_as_txt(
@@ -36,7 +36,7 @@ pub fn export_as_html(
         .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or("Export");
-    let html = super::convert::markdown_to_html(&markdown, title);
+    let html = super::convert::markdown_to_html(&markdown, title, &vault_path);
     ensure_parent(&dest_path)?;
     fs::write(&dest_path, html).map_err(|e| format!("Error al exportar HTML: {}", e))
 }
@@ -68,7 +68,7 @@ pub fn export_as_pdf(
     decorator.set_margins(genpdf::Margins::trbl(20, 15, 20, 15));
     doc.set_page_decorator(decorator);
 
-    render_markdown_to_pdf(&mut doc, &markdown);
+    render_markdown_to_pdf(&mut doc, &markdown, &vault_path);
 
     ensure_parent(&dest_path)?;
     doc.render_to_file(&dest_path)
@@ -88,7 +88,7 @@ pub fn export_as_docx(
     let markdown =
         fs::read_to_string(&source).map_err(|e| format!("Error al leer archivo: {}", e))?;
 
-    let docx = render_markdown_to_docx(&markdown);
+    let docx = render_markdown_to_docx(&markdown, &vault_path);
 
     ensure_parent(&dest_path)?;
     let file = fs::File::create(&dest_path)
@@ -171,20 +171,12 @@ fn load_font_family() -> Result<genpdf::fonts::FontFamily<genpdf::fonts::FontDat
         })
 }
 
-fn md_options() -> Options {
-    let mut options = Options::empty();
-    options.insert(Options::ENABLE_TABLES);
-    options.insert(Options::ENABLE_STRIKETHROUGH);
-    options.insert(Options::ENABLE_TASKLISTS);
-    options
-}
-
-fn render_markdown_to_pdf(doc: &mut genpdf::Document, markdown: &str) {
+fn render_markdown_to_pdf(doc: &mut genpdf::Document, markdown: &str, vault_path: &str) {
     use genpdf::elements;
     use genpdf::style;
     use genpdf::Element as _;
 
-    let parser = Parser::new_ext(markdown, md_options());
+    let parser = Parser::new_ext(markdown, super::convert::md_options());
 
     let mut bold = false;
     let mut italic = false;
@@ -311,6 +303,18 @@ fn render_markdown_to_pdf(doc: &mut genpdf::Document, markdown: &str) {
                 );
                 doc.push(elements::Break::new(0.3));
             }
+            Event::Start(Tag::Image { dest_url, .. }) => {
+                flush_paragraph(doc, &mut current_paragraph_parts);
+                if let Some(img_path) =
+                    super::convert::resolve_image_path(&dest_url, vault_path)
+                {
+                    if let Ok(img) = elements::Image::from_path(&img_path) {
+                        doc.push(img.with_alignment(genpdf::Alignment::Center));
+                        doc.push(elements::Break::new(0.3));
+                    }
+                }
+            }
+            Event::End(TagEnd::Image) => {}
             _ => {}
         }
     }
@@ -332,10 +336,10 @@ fn flush_paragraph(
     doc.push(paragraph);
 }
 
-fn render_markdown_to_docx(markdown: &str) -> docx_rs::Docx {
+fn render_markdown_to_docx(markdown: &str, vault_path: &str) -> docx_rs::Docx {
     use docx_rs::*;
 
-    let parser = Parser::new_ext(markdown, md_options());
+    let parser = Parser::new_ext(markdown, super::convert::md_options());
 
     let mut docx = Docx::new();
     let mut bold = false;
@@ -469,6 +473,19 @@ fn render_markdown_to_docx(markdown: &str) -> docx_rs::Docx {
                     ),
                 );
             }
+            Event::Start(Tag::Image { dest_url, .. }) => {
+                flush_docx_paragraph(&mut docx, &mut current_runs, None);
+                if let Some(img_path) =
+                    super::convert::resolve_image_path(&dest_url, vault_path)
+                {
+                    if let Ok(data) = std::fs::read(&img_path) {
+                        let pic = Pic::new(&data);
+                        let run = Run::new().add_image(pic);
+                        docx = docx.add_paragraph(Paragraph::new().add_run(run));
+                    }
+                }
+            }
+            Event::End(TagEnd::Image) => {}
             _ => {}
         }
     }
