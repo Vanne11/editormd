@@ -5,13 +5,26 @@ import { gfm } from "turndown-plugin-gfm";
 import mermaid from "mermaid";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useVaultStore } from "@/stores/vault-store";
+import { useUIStore } from "@/stores/ui-store";
 import { readImageBase64 } from "@/lib/tauri";
+import type { Theme } from "@/types";
 
-mermaid.initialize({
-  startOnLoad: false,
-  theme: "dark",
-  securityLevel: "loose",
-});
+const mermaidThemeMap: Record<Theme, string> = {
+  dark: "dark",
+  light: "default",
+  sepia: "neutral",
+  pastel: "default",
+  dracula: "dark",
+  alucard: "dark",
+};
+
+function initMermaid(appTheme: Theme) {
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: mermaidThemeMap[appTheme] || "dark",
+    securityLevel: "loose",
+  });
+}
 
 marked.use({ gfm: true, breaks: true });
 
@@ -37,26 +50,34 @@ async function resolveLocalImages(container: HTMLElement, vaultPath: string | nu
 
 async function renderMermaidBlocks(container: HTMLElement) {
   const blocks = container.querySelectorAll("code.language-mermaid");
+  if (blocks.length === 0) return;
+
   for (const block of blocks) {
     const pre = block.parentElement;
     if (!pre || pre.tagName !== "PRE") continue;
     const code = block.textContent || "";
-    try {
-      const id = `mermaid-${Math.random().toString(36).slice(2, 9)}`;
-      const { svg } = await mermaid.render(id, code);
-      const div = document.createElement("div");
-      div.className = "my-4 flex justify-center";
-      div.setAttribute("data-mermaid", code);
-      div.innerHTML = svg;
-      pre.replaceWith(div);
-    } catch {
-      // leave as code block
-    }
+    // Replace <pre><code> with a <div class="mermaid"> wrapper for mermaid.run()
+    const wrapper = document.createElement("div");
+    wrapper.className = "my-4 flex justify-center";
+    wrapper.setAttribute("data-mermaid", code);
+    const mermaidDiv = document.createElement("pre");
+    mermaidDiv.className = "mermaid";
+    mermaidDiv.textContent = code;
+    wrapper.appendChild(mermaidDiv);
+    pre.replaceWith(wrapper);
+  }
+
+  try {
+    const nodes = container.querySelectorAll(".mermaid");
+    await mermaid.run({ nodes: nodes as unknown as ArrayLike<HTMLElement> });
+  } catch (e) {
+    console.error("Mermaid rendering error:", e);
   }
 }
 
 export function MarkdownPreview({ content, onChange }: MarkdownPreviewProps) {
   const vaultPath = useVaultStore((s) => s.vaultPath);
+  const theme = useUIStore((s) => s.theme);
   const divRef = useRef<HTMLDivElement>(null);
   const focusedRef = useRef(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
@@ -83,6 +104,7 @@ export function MarkdownPreview({ content, onChange }: MarkdownPreviewProps) {
   useEffect(() => {
     if (!divRef.current || focusedRef.current) return;
     try {
+      initMermaid(theme);
       const raw = marked.parse(content) as string;
       divRef.current.innerHTML = raw;
       resolveLocalImages(divRef.current, vaultPath);
@@ -91,7 +113,7 @@ export function MarkdownPreview({ content, onChange }: MarkdownPreviewProps) {
       console.error("Error rendering preview:", e);
       if (divRef.current) divRef.current.textContent = content;
     }
-  }, [content, vaultPath]);
+  }, [content, vaultPath, theme]);
 
   // Sync preview edits → store (debounced)
   const syncToEditor = useCallback(() => {

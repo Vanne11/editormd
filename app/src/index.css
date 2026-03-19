@@ -350,3 +350,13 @@ body {
 .preview-content input[type="checkbox"] {
   margin-right: 0.5em;
 }
+
+/* Mermaid diagrams */
+.preview-content .mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.preview-content .mermaid svg * {
+  border-color: initial;
+}
