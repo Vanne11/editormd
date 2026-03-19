@@ -112,37 +112,47 @@ pub fn import_file_smart(vault_path: String, source_path: String) -> Result<Impo
         }
         // Formatos que requieren pandoc (DOCX, ORG, RST)
         "docx" | "org" | "rst" => {
+            // Verificar que pandoc esté instalado antes de intentar la conversión
+            let pandoc_available = std::process::Command::new("pandoc")
+                .arg("--version")
+                .output()
+                .map(|o| o.status.success())
+                .unwrap_or(false);
+
+            if !pandoc_available {
+                return Err(format!(
+                    "Para importar archivos .{} se necesita pandoc. Instálalo con: sudo pacman -S pandoc",
+                    ext
+                ));
+            }
+
             let pandoc_format = match ext.as_str() {
                 "docx" => "docx",
                 "org" => "org",
                 "rst" => "rst",
                 _ => unreachable!(),
             };
-            let pandoc_result = std::process::Command::new("pandoc")
+            let output = std::process::Command::new("pandoc")
                 .args(["-f", pandoc_format, "-t", "markdown", "--wrap=none", &source_path])
-                .output();
+                .output()
+                .map_err(|e| format!("Error al ejecutar pandoc: {}", e))?;
 
-            match pandoc_result {
-                Ok(output) if output.status.success() => {
-                    let md_content = String::from_utf8_lossy(&output.stdout).to_string();
-                    let stem = source
-                        .file_stem()
-                        .unwrap_or_default()
-                        .to_string_lossy()
-                        .to_string();
-                    let relative = save_as_md(vault, &vault_path, &stem, &md_content)?;
-                    Ok(ImportResult {
-                        relative_path: relative,
-                        was_converted: true,
-                        original_format: ext,
-                    })
-                }
-                _ => {
-                    Err(format!(
-                        "Se requiere pandoc para importar archivos .{}. Instálalo con tu gestor de paquetes.",
-                        ext
-                    ))
-                }
+            if output.status.success() {
+                let md_content = String::from_utf8_lossy(&output.stdout).to_string();
+                let stem = source
+                    .file_stem()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .to_string();
+                let relative = save_as_md(vault, &vault_path, &stem, &md_content)?;
+                Ok(ImportResult {
+                    relative_path: relative,
+                    was_converted: true,
+                    original_format: ext,
+                })
+            } else {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                Err(format!("Error de pandoc al convertir .{}: {}", ext, stderr))
             }
         }
         // Binarios → attachments/

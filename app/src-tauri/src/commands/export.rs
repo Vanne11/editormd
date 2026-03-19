@@ -182,6 +182,7 @@ fn render_markdown_to_pdf(doc: &mut genpdf::Document, markdown: &str, vault_path
     let mut italic = false;
     let mut heading_level: Option<u8> = None;
     let mut in_code_block = false;
+    let mut in_mermaid_block = false;
     let mut in_image = false;
     let mut code_block_text = String::new();
     let mut current_paragraph_parts: Vec<(String, style::Style)> = Vec::new();
@@ -221,17 +222,30 @@ fn render_markdown_to_pdf(doc: &mut genpdf::Document, markdown: &str, vault_path
             Event::End(TagEnd::Strong) => bold = false,
             Event::Start(Tag::Emphasis) => italic = true,
             Event::End(TagEnd::Emphasis) => italic = false,
-            Event::Start(Tag::CodeBlock(_)) => {
+            Event::Start(Tag::CodeBlock(kind)) => {
                 flush_paragraph(doc, &mut current_paragraph_parts);
+                let lang = match &kind {
+                    pulldown_cmark::CodeBlockKind::Fenced(lang) => lang.as_ref(),
+                    _ => "",
+                };
+                in_mermaid_block = lang == "mermaid";
                 in_code_block = true;
                 code_block_text.clear();
             }
             Event::End(TagEnd::CodeBlock) => {
                 in_code_block = false;
-                doc.push(
-                    elements::Paragraph::new(&code_block_text)
-                        .styled(style::Style::new().with_font_size(9)),
-                );
+                if in_mermaid_block {
+                    in_mermaid_block = false;
+                    doc.push(
+                        elements::Paragraph::new("[Diagrama Mermaid - ver exportación HTML]")
+                            .styled(style::Style::new().italic().with_font_size(9)),
+                    );
+                } else {
+                    doc.push(
+                        elements::Paragraph::new(&code_block_text)
+                            .styled(style::Style::new().with_font_size(9)),
+                    );
+                }
                 doc.push(elements::Break::new(0.3));
                 code_block_text.clear();
             }
@@ -309,17 +323,16 @@ fn render_markdown_to_pdf(doc: &mut genpdf::Document, markdown: &str, vault_path
             Event::Start(Tag::Image { dest_url, .. }) => {
                 flush_paragraph(doc, &mut current_paragraph_parts);
                 in_image = true;
+                log::debug!("PDF: procesando imagen: {}", dest_url);
                 if let Some(img_path) =
                     super::convert::resolve_image_path(&dest_url, vault_path)
                 {
-                    // Intentar cargar directamente, si falla (alpha/formato)
-                    // convertir a RGB JPEG primero
-                    let img_result = elements::Image::from_path(&img_path)
-                        .or_else(|_| {
-                            load_image_as_rgb_jpeg(&img_path)
-                        });
-                    if let Ok(img) = img_result {
-                        doc.push(img.with_alignment(genpdf::Alignment::Center));
+                    if let Some((genpdf_img, scale)) = load_image_for_pdf(&img_path) {
+                        doc.push(
+                            genpdf_img
+                                .with_scale(genpdf::Scale::new(scale, scale))
+                                .with_alignment(genpdf::Alignment::Center),
+                        );
                         doc.push(elements::Break::new(0.3));
                     }
                 }
@@ -491,11 +504,11 @@ fn render_markdown_to_docx(markdown: &str, vault_path: &str) -> docx_rs::Docx {
             Event::Start(Tag::Image { dest_url, .. }) => {
                 flush_docx_paragraph(&mut docx, &mut current_runs, None);
                 in_image = true;
+                log::debug!("DOCX: procesando imagen: {}", dest_url);
                 if let Some(img_path) =
                     super::convert::resolve_image_path(&dest_url, vault_path)
                 {
-                    if let Ok(data) = std::fs::read(&img_path) {
-                        let pic = Pic::new(&data);
+                    if let Some(pic) = load_image_for_docx(&img_path) {
                         let run = Run::new().add_image(pic);
                         docx = docx.add_paragraph(Paragraph::new().add_run(run));
                     }
@@ -529,21 +542,192 @@ fn flush_docx_paragraph(
     *docx = std::mem::take(docx).add_paragraph(p);
 }
 
-/// Carga una imagen y la convierte a RGB JPEG sin alpha para genpdf
-fn load_image_as_rgb_jpeg(path: &Path) -> Result<genpdf::elements::Image, genpdf::error::Error> {
-    let data = fs::read(path).map_err(|e| {
-        genpdf::error::Error::new(
-            format!("Cannot read image: {}", e),
-            genpdf::error::ErrorKind::InvalidData,
-        )
-    })?;
-    let img = image::load_from_memory(&data).map_err(|e| {
-        genpdf::error::Error::new(
-            format!("Cannot decode image: {}", e),
-            genpdf::error::ErrorKind::InvalidData,
-        )
-    })?;
-    // Convertir a RGB (quita alpha)
-    let rgb = image::DynamicImage::ImageRgb8(img.to_rgb8());
-    genpdf::elements::Image::from_dynamic_image(rgb)
+/// Carga imagen para PDF: decodifica con image 0.25, convierte a PNG bytes para genpdf
+fn load_image_for_pdf(path: &Path) -> Option<(genpdf::elements::Image, f64)> {
+    use image::GenericImageView;
+    use std::io::Cursor;
+
+    let ext = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+
+    // SVG no es soportado por el crate image — no se puede rasterizar sin resvg
+    if ext == "svg" {
+        log::warn!("SVG no soportado en export PDF: {}", path.display());
+        return None;
+    }
+
+    let data = match fs::read(path) {
+        Ok(d) => d,
+        Err(e) => {
+            log::error!("No se pudo leer imagen {}: {}", path.display(), e);
+            return None;
+        }
+    };
+
+    let img = match image::load_from_memory(&data) {
+        Ok(i) => i,
+        Err(e) => {
+            log::error!("No se pudo decodificar imagen {}: {}", path.display(), e);
+            return None;
+        }
+    };
+    let (px_w, _px_h) = img.dimensions();
+
+    // Convertir a RGB8 (quita alpha) y luego a PNG bytes en memoria
+    // genpdf usa image 0.23 internamente, así que le pasamos PNG via from_reader
+    let rgb = img.to_rgb8();
+    let mut png_buf = Cursor::new(Vec::new());
+    if let Err(e) = image::DynamicImage::ImageRgb8(rgb)
+        .write_to(&mut png_buf, image::ImageFormat::Png)
+    {
+        log::error!("No se pudo convertir a PNG {}: {}", path.display(), e);
+        return None;
+    }
+
+    let png_bytes = png_buf.into_inner();
+    let genpdf_img = match genpdf::elements::Image::from_reader(Cursor::new(png_bytes)) {
+        Ok(i) => i,
+        Err(e) => {
+            log::error!("genpdf no pudo cargar imagen {}: {}", path.display(), e);
+            return None;
+        }
+    };
+
+    // Calcular escala: A4 con márgenes 15mm → 180mm disponibles
+    let dpi = 300.0;
+    let mmpi = 25.4;
+    let max_width_mm = 180.0;
+    let img_width_mm = (px_w as f64 / dpi) * mmpi;
+    let scale = if img_width_mm > max_width_mm {
+        max_width_mm / img_width_mm
+    } else {
+        1.0
+    };
+
+    Some((genpdf_img, scale))
+}
+
+/// Carga imagen para DOCX: convierte a PNG sin paniquear
+fn load_image_for_docx(path: &Path) -> Option<docx_rs::Pic> {
+    use image::GenericImageView;
+
+    let ext = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+
+    if ext == "svg" {
+        log::warn!("SVG no soportado en export DOCX: {}", path.display());
+        return None;
+    }
+
+    let data = match fs::read(path) {
+        Ok(d) => d,
+        Err(e) => {
+            log::error!("No se pudo leer imagen {}: {}", path.display(), e);
+            return None;
+        }
+    };
+
+    let img = match image::load_from_memory(&data) {
+        Ok(i) => i,
+        Err(e) => {
+            log::error!("No se pudo decodificar imagen {}: {}", path.display(), e);
+            return None;
+        }
+    };
+    let (w, h) = img.dimensions();
+
+    // Convertir a PNG en memoria para máxima compatibilidad
+    let mut png_buf = std::io::Cursor::new(Vec::new());
+    if let Err(e) = img.write_to(&mut png_buf, image::ImageFormat::Png) {
+        log::error!("No se pudo convertir a PNG {}: {}", path.display(), e);
+        return None;
+    }
+
+    Some(docx_rs::Pic::new_with_dimensions(png_buf.into_inner(), w, h))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn test_load_image_for_pdf_png() {
+        // Create a temp PNG file
+        let img = image::RgbImage::from_fn(100, 80, |x, y| {
+            image::Rgb([(x % 256) as u8, (y % 256) as u8, 128])
+        });
+        let tmp = std::env::temp_dir().join("editormd_test_pdf.png");
+        img.save(&tmp).unwrap();
+        
+        let result = load_image_for_pdf(&tmp);
+        std::fs::remove_file(&tmp).ok();
+        assert!(result.is_some(), "PNG should load for PDF");
+    }
+    
+    #[test]
+    fn test_load_image_for_pdf_rgba() {
+        // RGBA image (with alpha) - should still work after conversion
+        let img = image::RgbaImage::from_fn(100, 80, |x, y| {
+            image::Rgba([(x % 256) as u8, (y % 256) as u8, 128, 200])
+        });
+        let tmp = std::env::temp_dir().join("editormd_test_pdf_rgba.png");
+        img.save(&tmp).unwrap();
+        
+        let result = load_image_for_pdf(&tmp);
+        std::fs::remove_file(&tmp).ok();
+        assert!(result.is_some(), "RGBA PNG should load for PDF (alpha stripped)");
+    }
+    
+    #[test]
+    fn test_load_image_for_pdf_webp() {
+        // Create a WebP by encoding a test image
+        let img = image::RgbImage::from_fn(100, 80, |x, y| {
+            image::Rgb([(x % 256) as u8, (y % 256) as u8, 128])
+        });
+        let tmp = std::env::temp_dir().join("editormd_test_pdf.webp");
+        img.save(&tmp).unwrap();
+        
+        let result = load_image_for_pdf(&tmp);
+        std::fs::remove_file(&tmp).ok();
+        assert!(result.is_some(), "WebP should load for PDF");
+    }
+    
+    #[test]
+    fn test_load_image_for_docx_png() {
+        let img = image::RgbImage::from_fn(100, 80, |_, _| image::Rgb([255, 0, 0]));
+        let tmp = std::env::temp_dir().join("editormd_test_docx.png");
+        img.save(&tmp).unwrap();
+        
+        let result = load_image_for_docx(&tmp);
+        std::fs::remove_file(&tmp).ok();
+        assert!(result.is_some(), "PNG should load for DOCX");
+    }
+    
+    #[test]
+    fn test_load_image_for_docx_jpeg() {
+        let img = image::RgbImage::from_fn(100, 80, |_, _| image::Rgb([0, 255, 0]));
+        let tmp = std::env::temp_dir().join("editormd_test_docx.jpg");
+        img.save(&tmp).unwrap();
+        
+        let result = load_image_for_docx(&tmp);
+        std::fs::remove_file(&tmp).ok();
+        assert!(result.is_some(), "JPEG should load for DOCX");
+    }
+    
+    #[test]
+    fn test_load_image_for_pdf_svg_skipped() {
+        // SVG should return None gracefully, not panic
+        let tmp = std::env::temp_dir().join("editormd_test.svg");
+        std::fs::write(&tmp, "<svg></svg>").unwrap();
+        
+        let result = load_image_for_pdf(&tmp);
+        std::fs::remove_file(&tmp).ok();
+        assert!(result.is_none(), "SVG should be skipped for PDF");
+    }
 }
