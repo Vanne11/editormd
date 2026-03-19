@@ -5,172 +5,206 @@
 
 /* ===== Theme: Dark (default) ===== */
 [data-theme="dark"] {
-  --background: oklch(0.145 0.014 285);
-  --foreground: oklch(0.925 0.01 280);
-  --card: oklch(0.17 0.014 285);
-  --card-foreground: oklch(0.925 0.01 280);
-  --popover: oklch(0.17 0.014 285);
-  --popover-foreground: oklch(0.925 0.01 280);
-  --primary: oklch(0.65 0.2 280);
-  --primary-foreground: oklch(0.98 0 0);
-  --secondary: oklch(0.25 0.014 285);
-  --secondary-foreground: oklch(0.85 0.01 280);
-  --muted: oklch(0.22 0.012 285);
-  --muted-foreground: oklch(0.55 0.015 280);
-  --accent: oklch(0.25 0.02 280);
-  --accent-foreground: oklch(0.9 0.01 280);
-  --destructive: oklch(0.55 0.2 27);
-  --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.25 0.014 285);
-  --input: oklch(0.22 0.014 285);
-  --ring: oklch(0.65 0.2 280);
-  --sidebar: oklch(0.155 0.014 285);
+  --background: #1a1a2e;
+  --foreground: #e0e0e8;
+  --card: #1e1e34;
+  --card-foreground: #e0e0e8;
+  --popover: #1e1e34;
+  --popover-foreground: #e0e0e8;
+  --primary: #7c6ff7;
+  --primary-foreground: #ffffff;
+  --secondary: #2a2a40;
+  --secondary-foreground: #c0c0d0;
+  --muted: #242438;
+  --muted-foreground: #8888a0;
+  --accent: #2e2e48;
+  --accent-foreground: #d0d0e0;
+  --destructive: #e04040;
+  --destructive-foreground: #ffffff;
+  --border: #2e2e48;
+  --input: #262640;
+  --ring: #7c6ff7;
+  --sidebar: #16162a;
 
-  --color-editor-bg: oklch(0.145 0.014 285);
-  --color-editor-fg: oklch(0.9 0.01 280);
-  --color-editor-cursor: oklch(0.65 0.2 280);
-  --color-editor-active-line: oklch(0.18 0.014 285);
-  --color-editor-gutter-bg: oklch(0.145 0.014 285);
-  --color-editor-gutter-fg: oklch(0.4 0.015 280);
-  --color-editor-selection: oklch(0.3 0.05 280);
+  --color-editor-bg: #1a1a2e;
+  --color-editor-fg: #d8d8e8;
+  --color-editor-cursor: #7c6ff7;
+  --color-editor-active-line: #20203a;
+  --color-editor-gutter-bg: #16162a;
+  --color-editor-gutter-fg: #555570;
+  --color-editor-selection: #3a3a60;
 
   color-scheme: dark;
 }
 
 /* ===== Theme: Light ===== */
 [data-theme="light"] {
-  --background: oklch(0.985 0.002 280);
-  --foreground: oklch(0.15 0.014 285);
-  --card: oklch(0.98 0.002 280);
-  --card-foreground: oklch(0.15 0.014 285);
-  --popover: oklch(0.98 0.002 280);
-  --popover-foreground: oklch(0.15 0.014 285);
-  --primary: oklch(0.55 0.2 280);
-  --primary-foreground: oklch(0.98 0 0);
-  --secondary: oklch(0.92 0.005 280);
-  --secondary-foreground: oklch(0.3 0.014 285);
-  --muted: oklch(0.94 0.003 280);
-  --muted-foreground: oklch(0.5 0.015 280);
-  --accent: oklch(0.93 0.01 280);
-  --accent-foreground: oklch(0.2 0.014 285);
-  --destructive: oklch(0.55 0.2 27);
-  --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.88 0.005 280);
-  --input: oklch(0.9 0.005 280);
-  --ring: oklch(0.55 0.2 280);
-  --sidebar: oklch(0.96 0.003 280);
+  --background: #fafafa;
+  --foreground: #1a1a2e;
+  --card: #ffffff;
+  --card-foreground: #1a1a2e;
+  --popover: #ffffff;
+  --popover-foreground: #1a1a2e;
+  --primary: #5b4fd4;
+  --primary-foreground: #ffffff;
+  --secondary: #f0f0f4;
+  --secondary-foreground: #3a3a50;
+  --muted: #f2f2f6;
+  --muted-foreground: #6e6e88;
+  --accent: #eeeef4;
+  --accent-foreground: #2a2a40;
+  --destructive: #d93636;
+  --destructive-foreground: #ffffff;
+  --border: #e0e0e8;
+  --input: #e8e8f0;
+  --ring: #5b4fd4;
+  --sidebar: #f4f4f8;
 
-  --color-editor-bg: oklch(0.985 0.002 280);
-  --color-editor-fg: oklch(0.15 0.014 285);
-  --color-editor-cursor: oklch(0.55 0.2 280);
-  --color-editor-active-line: oklch(0.95 0.003 280);
-  --color-editor-gutter-bg: oklch(0.96 0.003 280);
-  --color-editor-gutter-fg: oklch(0.65 0.01 280);
-  --color-editor-selection: oklch(0.85 0.05 280);
+  --color-editor-bg: #fafafa;
+  --color-editor-fg: #1a1a2e;
+  --color-editor-cursor: #5b4fd4;
+  --color-editor-active-line: #f0f0f6;
+  --color-editor-gutter-bg: #f4f4f8;
+  --color-editor-gutter-fg: #a0a0b0;
+  --color-editor-selection: #d0d0f0;
 
   color-scheme: light;
-}
-
-/* ===== Theme: Pastel ===== */
-[data-theme="pastel"] {
-  --background: oklch(0.18 0.04 290);
-  --foreground: oklch(0.9 0.03 290);
-  --card: oklch(0.2 0.04 290);
-  --card-foreground: oklch(0.9 0.03 290);
-  --popover: oklch(0.2 0.04 290);
-  --popover-foreground: oklch(0.9 0.03 290);
-  --primary: oklch(0.7 0.18 290);
-  --primary-foreground: oklch(0.98 0 0);
-  --secondary: oklch(0.25 0.04 290);
-  --secondary-foreground: oklch(0.85 0.03 290);
-  --muted: oklch(0.22 0.035 290);
-  --muted-foreground: oklch(0.55 0.04 290);
-  --accent: oklch(0.28 0.06 290);
-  --accent-foreground: oklch(0.9 0.03 290);
-  --destructive: oklch(0.55 0.15 15);
-  --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.28 0.04 290);
-  --input: oklch(0.22 0.04 290);
-  --ring: oklch(0.7 0.18 290);
-  --sidebar: oklch(0.17 0.04 290);
-
-  --color-editor-bg: oklch(0.18 0.04 290);
-  --color-editor-fg: oklch(0.88 0.03 290);
-  --color-editor-cursor: oklch(0.7 0.18 290);
-  --color-editor-active-line: oklch(0.2 0.04 290);
-  --color-editor-gutter-bg: oklch(0.17 0.04 290);
-  --color-editor-gutter-fg: oklch(0.42 0.04 290);
-  --color-editor-selection: oklch(0.32 0.08 290);
-
-  color-scheme: dark;
 }
 
 /* ===== Theme: Sepia ===== */
 [data-theme="sepia"] {
-  --background: oklch(0.93 0.02 75);
-  --foreground: oklch(0.25 0.03 55);
-  --card: oklch(0.91 0.02 75);
-  --card-foreground: oklch(0.25 0.03 55);
-  --popover: oklch(0.91 0.02 75);
-  --popover-foreground: oklch(0.25 0.03 55);
-  --primary: oklch(0.55 0.12 55);
-  --primary-foreground: oklch(0.97 0.01 75);
-  --secondary: oklch(0.87 0.02 75);
-  --secondary-foreground: oklch(0.35 0.03 55);
-  --muted: oklch(0.88 0.02 75);
-  --muted-foreground: oklch(0.5 0.03 60);
-  --accent: oklch(0.86 0.03 70);
-  --accent-foreground: oklch(0.3 0.03 55);
-  --destructive: oklch(0.55 0.2 27);
-  --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.82 0.025 72);
-  --input: oklch(0.85 0.02 75);
-  --ring: oklch(0.55 0.12 55);
-  --sidebar: oklch(0.9 0.025 73);
+  --background: #f4ecd8;
+  --foreground: #433422;
+  --card: #efe5cc;
+  --card-foreground: #433422;
+  --popover: #efe5cc;
+  --popover-foreground: #433422;
+  --primary: #8b6914;
+  --primary-foreground: #faf5eb;
+  --secondary: #e8ddc4;
+  --secondary-foreground: #5a4830;
+  --muted: #ebe0c8;
+  --muted-foreground: #7a6a50;
+  --accent: #e4d8b8;
+  --accent-foreground: #4a3a28;
+  --destructive: #b84020;
+  --destructive-foreground: #faf5eb;
+  --border: #d8ccaa;
+  --input: #e0d4b8;
+  --ring: #8b6914;
+  --sidebar: #efe4c8;
 
-  --color-editor-bg: oklch(0.93 0.02 75);
-  --color-editor-fg: oklch(0.25 0.03 55);
-  --color-editor-cursor: oklch(0.45 0.12 55);
-  --color-editor-active-line: oklch(0.9 0.025 73);
-  --color-editor-gutter-bg: oklch(0.9 0.025 73);
-  --color-editor-gutter-fg: oklch(0.6 0.03 65);
-  --color-editor-selection: oklch(0.8 0.05 65);
+  --color-editor-bg: #f4ecd8;
+  --color-editor-fg: #433422;
+  --color-editor-cursor: #8b6914;
+  --color-editor-active-line: #ede4cc;
+  --color-editor-gutter-bg: #efe4c8;
+  --color-editor-gutter-fg: #9a8a68;
+  --color-editor-selection: #d8c898;
 
   color-scheme: light;
 }
 
-/* ===== Theme: Alucard ===== */
-[data-theme="alucard"] {
-  --background: oklch(0.13 0.02 350);
-  --foreground: oklch(0.88 0.03 350);
-  --card: oklch(0.16 0.025 350);
-  --card-foreground: oklch(0.88 0.03 350);
-  --popover: oklch(0.16 0.025 350);
-  --popover-foreground: oklch(0.88 0.03 350);
-  --primary: oklch(0.6 0.22 15);
-  --primary-foreground: oklch(0.97 0.01 350);
-  --secondary: oklch(0.22 0.025 350);
-  --secondary-foreground: oklch(0.82 0.03 350);
-  --muted: oklch(0.19 0.02 350);
-  --muted-foreground: oklch(0.52 0.04 350);
-  --accent: oklch(0.24 0.04 5);
-  --accent-foreground: oklch(0.88 0.03 350);
-  --destructive: oklch(0.55 0.22 20);
-  --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.24 0.03 350);
-  --input: oklch(0.2 0.025 350);
-  --ring: oklch(0.6 0.22 15);
-  --sidebar: oklch(0.12 0.02 350);
+/* ===== Theme: Pastel (Morado Pastel) ===== */
+[data-theme="pastel"] {
+  --background: #f3eef8;
+  --foreground: #3a2e50;
+  --card: #ede6f4;
+  --card-foreground: #3a2e50;
+  --popover: #ede6f4;
+  --popover-foreground: #3a2e50;
+  --primary: #9b7ed8;
+  --primary-foreground: #ffffff;
+  --secondary: #e8dff2;
+  --secondary-foreground: #4a4060;
+  --muted: #eae2f2;
+  --muted-foreground: #7a6e90;
+  --accent: #e0d6ee;
+  --accent-foreground: #3e3458;
+  --destructive: #d45858;
+  --destructive-foreground: #ffffff;
+  --border: #d4c8e4;
+  --input: #ddd4ec;
+  --ring: #9b7ed8;
+  --sidebar: #eee8f6;
 
-  --color-editor-bg: oklch(0.13 0.02 350);
-  --color-editor-fg: oklch(0.85 0.03 350);
-  --color-editor-cursor: oklch(0.6 0.22 15);
-  --color-editor-active-line: oklch(0.16 0.025 350);
-  --color-editor-gutter-bg: oklch(0.12 0.02 350);
-  --color-editor-gutter-fg: oklch(0.4 0.04 350);
-  --color-editor-selection: oklch(0.28 0.08 10);
+  --color-editor-bg: #f3eef8;
+  --color-editor-fg: #3a2e50;
+  --color-editor-cursor: #9b7ed8;
+  --color-editor-active-line: #ebe4f4;
+  --color-editor-gutter-bg: #eee8f6;
+  --color-editor-gutter-fg: #9a90aa;
+  --color-editor-selection: #d0c0e8;
+
+  color-scheme: light;
+}
+
+/* ===== Theme: Dracula ===== */
+[data-theme="dracula"] {
+  --background: #282a36;
+  --foreground: #f8f8f2;
+  --card: #2e303e;
+  --card-foreground: #f8f8f2;
+  --popover: #2e303e;
+  --popover-foreground: #f8f8f2;
+  --primary: #bd93f9;
+  --primary-foreground: #282a36;
+  --secondary: #343746;
+  --secondary-foreground: #e0e0e8;
+  --muted: #303240;
+  --muted-foreground: #6272a4;
+  --accent: #383a4c;
+  --accent-foreground: #f8f8f2;
+  --destructive: #ff5555;
+  --destructive-foreground: #f8f8f2;
+  --border: #44475a;
+  --input: #383a4c;
+  --ring: #bd93f9;
+  --sidebar: #21222c;
+
+  --color-editor-bg: #282a36;
+  --color-editor-fg: #f8f8f2;
+  --color-editor-cursor: #f8f8f2;
+  --color-editor-active-line: #2e3040;
+  --color-editor-gutter-bg: #21222c;
+  --color-editor-gutter-fg: #6272a4;
+  --color-editor-selection: #44475a;
 
   color-scheme: dark;
+}
+
+/* ===== Theme: Alucard ===== */
+[data-theme="alucard"] {
+  --background: #f8f0f0;
+  --foreground: #2a1a28;
+  --card: #f2e8ea;
+  --card-foreground: #2a1a28;
+  --popover: #f2e8ea;
+  --popover-foreground: #2a1a28;
+  --primary: #9b4dca;
+  --primary-foreground: #ffffff;
+  --secondary: #ecdce4;
+  --secondary-foreground: #402840;
+  --muted: #eedee6;
+  --muted-foreground: #806878;
+  --accent: #e8d0dc;
+  --accent-foreground: #302030;
+  --destructive: #c43c3c;
+  --destructive-foreground: #ffffff;
+  --border: #dcc8d4;
+  --input: #e4d4dc;
+  --ring: #9b4dca;
+  --sidebar: #f4eaee;
+
+  --color-editor-bg: #f8f0f0;
+  --color-editor-fg: #2a1a28;
+  --color-editor-cursor: #9b4dca;
+  --color-editor-active-line: #f0e6ea;
+  --color-editor-gutter-bg: #f4eaee;
+  --color-editor-gutter-fg: #a090a0;
+  --color-editor-selection: #dcc0d4;
+
+  color-scheme: light;
 }
 
 @theme inline {

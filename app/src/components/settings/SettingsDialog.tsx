@@ -1,5 +1,5 @@
 import * as Dialog from "@radix-ui/react-dialog";
-import { X, Moon, Sun, Palette, BookOpen, Skull } from "lucide-react";
+import { X, Moon, Sun, Palette, BookOpen, Ghost, Skull } from "lucide-react";
 import { useUIStore } from "@/stores/ui-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import type { Theme } from "@/types";
@@ -9,17 +9,19 @@ import { cn } from "@/lib/utils";
 const themeIcons: Record<Theme, React.ComponentType<{ className?: string }>> = {
   dark: Moon,
   light: Sun,
-  pastel: Palette,
   sepia: BookOpen,
+  pastel: Palette,
+  dracula: Ghost,
   alucard: Skull,
 };
 
 const themePreviewColors: Record<Theme, { bg: string; fg: string; accent: string }> = {
-  dark: { bg: "#1e1e2e", fg: "#cdd6f4", accent: "#7c6ff7" },
-  light: { bg: "#f8f8fa", fg: "#1e1e2e", accent: "#6a5af0" },
-  pastel: { bg: "#2a2242", fg: "#d8c8f8", accent: "#a78bfa" },
-  sepia: { bg: "#ede4d3", fg: "#3e3225", accent: "#8b6914" },
-  alucard: { bg: "#1f1520", fg: "#dcc8d8", accent: "#d42f2f" },
+  dark: { bg: "#1a1a2e", fg: "#e0e0e8", accent: "#7c6ff7" },
+  light: { bg: "#fafafa", fg: "#1a1a2e", accent: "#5b4fd4" },
+  sepia: { bg: "#f4ecd8", fg: "#433422", accent: "#8b6914" },
+  pastel: { bg: "#f3eef8", fg: "#3a2e50", accent: "#9b7ed8" },
+  dracula: { bg: "#282a36", fg: "#f8f8f2", accent: "#bd93f9" },
+  alucard: { bg: "#f8f0f0", fg: "#2a1a28", accent: "#9b4dca" },
 };
 
 interface SettingsDialogProps {
@@ -32,7 +34,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const setTheme = useUIStore((s) => s.setTheme);
   const { t, locale, setLocale } = useSettingsStore();
 
-  const themes: Theme[] = ["dark", "light", "pastel", "sepia", "alucard"];
+  const themes: Theme[] = ["dark", "light", "sepia", "pastel", "dracula", "alucard"];
   const locales: { key: Locale; label: string }[] = [
     { key: "es", label: t.settings.spanish },
     { key: "en", label: t.settings.english },
@@ -57,7 +59,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             <section>
               <h3 className="text-sm font-semibold mb-1">{t.settings.appearance}</h3>
               <p className="text-xs text-muted-foreground mb-3">{t.settings.themeDescription}</p>
-              <div className="grid grid-cols-5 gap-2">
+              <div className="grid grid-cols-6 gap-2">
                 {themes.map((t_key) => {
                   const Icon = themeIcons[t_key];
                   const colors = themePreviewColors[t_key];

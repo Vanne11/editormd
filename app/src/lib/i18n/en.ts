@@ -56,8 +56,9 @@ export const en = {
   themes: {
     dark: "Dark",
     light: "Light",
-    pastel: "Pastel",
     sepia: "Sepia",
+    pastel: "Pastel",
+    dracula: "Dracula",
     alucard: "Alucard",
   },
   export: {

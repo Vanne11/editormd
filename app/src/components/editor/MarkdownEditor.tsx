@@ -18,48 +18,52 @@ import {
 import { useEditorStore } from "@/stores/editor-store";
 import { useUIStore } from "@/stores/ui-store";
 import { imagePreviewField } from "./codemirror-images";
+import type { Theme } from "@/types";
 
-const darkTheme = EditorView.theme(
-  {
-    "&": {
-      backgroundColor: "var(--color-editor-bg)",
-      color: "var(--color-editor-fg)",
-      height: "100%",
-    },
-    ".cm-content": {
-      fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-      fontSize: "14px",
-      lineHeight: "1.6",
-      padding: "16px 0",
-      caretColor: "var(--color-editor-cursor)",
-    },
-    ".cm-cursor": {
-      borderLeftColor: "var(--color-editor-cursor)",
-    },
-    ".cm-activeLine": {
-      backgroundColor: "var(--color-editor-active-line)",
-    },
-    ".cm-gutters": {
-      backgroundColor: "var(--color-editor-gutter-bg)",
-      color: "var(--color-editor-gutter-fg)",
-      border: "none",
-      paddingRight: "8px",
-    },
-    ".cm-activeLineGutter": {
-      backgroundColor: "var(--color-editor-active-line)",
-    },
-    ".cm-selectionBackground": {
-      backgroundColor: "var(--color-editor-selection) !important",
-    },
-    "&.cm-focused .cm-selectionBackground": {
-      backgroundColor: "var(--color-editor-selection) !important",
-    },
-    ".cm-scroller": {
-      overflow: "auto",
-    },
+const darkThemes: Theme[] = ["dark", "dracula"];
+
+const editorThemeStyles = {
+  "&": {
+    backgroundColor: "var(--color-editor-bg)",
+    color: "var(--color-editor-fg)",
+    height: "100%",
   },
-  { dark: true }
-);
+  ".cm-content": {
+    fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+    fontSize: "14px",
+    lineHeight: "1.6",
+    padding: "16px 0",
+    caretColor: "var(--color-editor-cursor)",
+  },
+  ".cm-cursor": {
+    borderLeftColor: "var(--color-editor-cursor)",
+  },
+  ".cm-activeLine": {
+    backgroundColor: "var(--color-editor-active-line)",
+  },
+  ".cm-gutters": {
+    backgroundColor: "var(--color-editor-gutter-bg)",
+    color: "var(--color-editor-gutter-fg)",
+    border: "none",
+    paddingRight: "8px",
+  },
+  ".cm-activeLineGutter": {
+    backgroundColor: "var(--color-editor-active-line)",
+  },
+  ".cm-selectionBackground": {
+    backgroundColor: "var(--color-editor-selection) !important",
+  },
+  "&.cm-focused .cm-selectionBackground": {
+    backgroundColor: "var(--color-editor-selection) !important",
+  },
+  ".cm-scroller": {
+    overflow: "auto",
+  },
+};
+
+function createEditorTheme(theme: Theme) {
+  return EditorView.theme(editorThemeStyles, { dark: darkThemes.includes(theme) });
+}
 
 interface MarkdownEditorProps {
   content: string;
@@ -105,7 +109,7 @@ export function MarkdownEditor({ content, onChange }: MarkdownEditorProps) {
         history(),
         markdown({ base: markdownLanguage, codeLanguages: languages }),
         syntaxHighlighting(defaultHighlightStyle),
-        darkTheme,
+        createEditorTheme(theme),
         keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
         updateListener,
         EditorView.lineWrapping,
@@ -118,7 +122,7 @@ export function MarkdownEditor({ content, onChange }: MarkdownEditorProps) {
       parent: containerRef.current,
     });
     setEditorView(viewRef.current);
-  }, []);
+  }, [theme]);
 
   useEffect(() => {
     createEditor();

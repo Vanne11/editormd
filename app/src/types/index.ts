@@ -27,4 +27,4 @@ export interface Tab {
 
 export type ViewMode = "editor" | "preview" | "split";
 
-export type Theme = "dark" | "light" | "pastel" | "sepia" | "alucard";
+export type Theme = "dark" | "light" | "sepia" | "pastel" | "dracula" | "alucard";

@@ -2,19 +2,20 @@ import { useEditorStore } from "@/stores/editor-store";
 import { useUIStore } from "@/stores/ui-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { countWords, countChars } from "@/lib/utils";
-import { Moon, Sun, Palette, BookOpen, Skull, Globe, Settings } from "lucide-react";
+import { Moon, Sun, Palette, BookOpen, Ghost, Skull, Globe, Settings } from "lucide-react";
 import type { Theme } from "@/types";
 import type { Locale } from "@/lib/i18n";
 
 const themeIcons: Record<Theme, React.ComponentType<{ className?: string }>> = {
   dark: Moon,
   light: Sun,
-  pastel: Palette,
   sepia: BookOpen,
+  pastel: Palette,
+  dracula: Ghost,
   alucard: Skull,
 };
 
-const themeOrder: Theme[] = ["dark", "light", "pastel", "sepia", "alucard"];
+const themeOrder: Theme[] = ["dark", "light", "sepia", "pastel", "dracula", "alucard"];
 
 export function StatusBar() {
   const activeTab = useEditorStore((s) => s.tabs.find((t) => t.id === s.activeTabId));
