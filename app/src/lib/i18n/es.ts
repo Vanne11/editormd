@@ -45,6 +45,11 @@ export const es = {
     words: "palabras",
     chars: "caracteres",
     unsaved: "Sin guardar",
+    unsavedTitle: "Cambios sin guardar",
+    unsavedMessage: "\"{{name}}\" tiene cambios sin guardar. ¿Qué deseas hacer?",
+    save: "Guardar",
+    discard: "Descartar",
+    cancel: "Cancelar",
     markdown: "Markdown",
   },
   themes: {

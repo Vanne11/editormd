@@ -17,6 +17,7 @@ import {
 } from "@codemirror/language";
 import { useEditorStore } from "@/stores/editor-store";
 import { useUIStore } from "@/stores/ui-store";
+import { imagePreviewField } from "./codemirror-images";
 
 const darkTheme = EditorView.theme(
   {
@@ -108,6 +109,7 @@ export function MarkdownEditor({ content, onChange }: MarkdownEditorProps) {
         keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
         updateListener,
         EditorView.lineWrapping,
+        imagePreviewField,
       ],
     });
 

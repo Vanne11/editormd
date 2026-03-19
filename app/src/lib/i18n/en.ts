@@ -45,6 +45,11 @@ export const en = {
     words: "words",
     chars: "characters",
     unsaved: "Unsaved",
+    unsavedTitle: "Unsaved changes",
+    unsavedMessage: "\"{{name}}\" has unsaved changes. What would you like to do?",
+    save: "Save",
+    discard: "Discard",
+    cancel: "Cancel",
     markdown: "Markdown",
   },
   themes: {

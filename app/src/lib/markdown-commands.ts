@@ -32,13 +32,23 @@ const actions: Record<string, MarkdownAction> = {
   code: { type: "wrap", before: "`", after: "`", placeholder: "código" },
   quote: { type: "line", prefix: "> " },
   link: { type: "wrap", before: "[", after: "](url)", placeholder: "texto" },
-  image: { type: "insert", text: "![alt](url)" },
   table: {
     type: "insert",
     text: "| Columna 1 | Columna 2 | Columna 3 |\n| --- | --- | --- |\n| celda | celda | celda |",
   },
   separator: { type: "insert", text: "\n---\n" },
 };
+
+export function insertImageReference(view: EditorView, relativePath: string) {
+  const { from, to } = view.state.selection.main;
+  const fileName = relativePath.split("/").pop() ?? relativePath;
+  const text = `![${fileName}](${relativePath})`;
+  view.focus();
+  view.dispatch({
+    changes: { from, to, insert: text },
+    selection: { anchor: from + text.length },
+  });
+}
 
 export function executeMarkdownAction(view: EditorView, key: string) {
   const action = actions[key];

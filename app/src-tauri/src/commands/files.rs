@@ -125,6 +125,58 @@ pub fn import_file(vault_path: String, source_path: String) -> Result<String, St
 }
 
 #[tauri::command]
+pub fn import_image(vault_path: String, source_path: String) -> Result<String, String> {
+    let source = Path::new(&source_path);
+    if !source.exists() {
+        return Err("El archivo origen no existe".to_string());
+    }
+
+    let assets_dir = PathBuf::from(&vault_path).join("assets");
+    fs::create_dir_all(&assets_dir)
+        .map_err(|e| format!("Error al crear carpeta assets: {}", e))?;
+
+    let file_name = source
+        .file_name()
+        .ok_or("No se pudo obtener el nombre del archivo")?
+        .to_string_lossy()
+        .to_string();
+
+    let dest = assets_dir.join(&file_name);
+
+    let final_dest = if dest.exists() {
+        let stem = source
+            .file_stem()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string();
+        let ext = source
+            .extension()
+            .map(|e| format!(".{}", e.to_string_lossy()))
+            .unwrap_or_default();
+        let mut counter = 1u32;
+        loop {
+            let new_name = format!("{}-{}{}", stem, counter, ext);
+            let candidate = assets_dir.join(&new_name);
+            if !candidate.exists() {
+                break candidate;
+            }
+            counter += 1;
+        }
+    } else {
+        dest
+    };
+
+    fs::copy(&source, &final_dest).map_err(|e| format!("Error al importar imagen: {}", e))?;
+
+    let relative = final_dest
+        .strip_prefix(&vault_path)
+        .unwrap_or(&final_dest)
+        .to_string_lossy()
+        .to_string();
+    Ok(relative)
+}
+
+#[tauri::command]
 pub fn export_file(vault_path: String, file_path: String, dest_path: String) -> Result<(), String> {
     let source = Path::new(&vault_path).join(&file_path);
     if !source.exists() {

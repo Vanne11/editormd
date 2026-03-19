@@ -1,3 +1,4 @@
+import { useEffect, useRef, useCallback } from "react";
 import { MarkdownEditor } from "./MarkdownEditor";
 import { MarkdownPreview } from "./MarkdownPreview";
 import { EditorToolbar } from "./EditorToolbar";
@@ -14,6 +15,71 @@ export function EditorArea() {
   const viewMode = useUIStore((s) => s.viewMode);
   const vaultPath = useVaultStore((s) => s.vaultPath);
   const t = useSettingsStore((s) => s.t);
+  const panelsRef = useRef<HTMLDivElement>(null);
+
+  const handleContentChange = useCallback(
+    (content: string) => {
+      if (activeTab) updateContent(activeTab.id, content);
+    },
+    [activeTab?.id, updateContent]
+  );
+
+  // Scroll sync between editor and preview in split mode
+  useEffect(() => {
+    if (viewMode !== "split") return;
+    const container = panelsRef.current;
+    if (!container) return;
+
+    let editorEl: HTMLElement | null = null;
+    let previewEl: HTMLElement | null = null;
+    let source: "editor" | "preview" | null = null;
+    let guardTimer: ReturnType<typeof setTimeout>;
+    let disposed = false;
+
+    const sync = (from: HTMLElement, to: HTMLElement) => {
+      const max = from.scrollHeight - from.clientHeight;
+      if (max <= 0) return;
+      const pct = from.scrollTop / max;
+      to.scrollTop = pct * (to.scrollHeight - to.clientHeight);
+    };
+
+    const onEditorScroll = () => {
+      if (source === "preview") return;
+      source = "editor";
+      clearTimeout(guardTimer);
+      sync(editorEl!, previewEl!);
+      guardTimer = setTimeout(() => { source = null; }, 80);
+    };
+
+    const onPreviewScroll = () => {
+      if (source === "editor") return;
+      source = "preview";
+      clearTimeout(guardTimer);
+      sync(previewEl!, editorEl!);
+      guardTimer = setTimeout(() => { source = null; }, 80);
+    };
+
+    // Wait for both scroll containers to exist in the DOM
+    const tryAttach = () => {
+      if (disposed) return;
+      editorEl = container.querySelector('[data-panel="editor"] .cm-scroller');
+      previewEl = container.querySelector('[data-panel="preview"] [data-radix-scroll-area-viewport]');
+      if (editorEl && previewEl) {
+        editorEl.addEventListener("scroll", onEditorScroll);
+        previewEl.addEventListener("scroll", onPreviewScroll);
+      } else {
+        requestAnimationFrame(tryAttach);
+      }
+    };
+    requestAnimationFrame(tryAttach);
+
+    return () => {
+      disposed = true;
+      clearTimeout(guardTimer);
+      editorEl?.removeEventListener("scroll", onEditorScroll);
+      previewEl?.removeEventListener("scroll", onPreviewScroll);
+    };
+  }, [viewMode, activeTab?.id]);
 
   if (!vaultPath) {
     return (
@@ -46,18 +112,27 @@ export function EditorArea() {
     <div className="flex-1 flex flex-col min-w-0">
       <EditorTabs />
       <EditorToolbar />
-      <div className="flex-1 flex min-h-0">
+      <div className="flex-1 flex min-h-0" ref={panelsRef}>
         {(viewMode === "editor" || viewMode === "split") && (
-          <div className={viewMode === "split" ? "w-1/2 border-r border-border" : "w-full"}>
+          <div
+            className={viewMode === "split" ? "w-1/2 border-r border-border" : "w-full"}
+            data-panel="editor"
+          >
             <MarkdownEditor
               content={activeTab.content}
-              onChange={(content) => updateContent(activeTab.id, content)}
+              onChange={handleContentChange}
             />
           </div>
         )}
         {(viewMode === "preview" || viewMode === "split") && (
-          <div className={viewMode === "split" ? "w-1/2" : "w-full"}>
-            <MarkdownPreview content={activeTab.content} />
+          <div
+            className={viewMode === "split" ? "w-1/2" : "w-full"}
+            data-panel="preview"
+          >
+            <MarkdownPreview
+              content={activeTab.content}
+              onChange={handleContentChange}
+            />
           </div>
         )}
       </div>

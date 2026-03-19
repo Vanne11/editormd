@@ -64,6 +64,13 @@ export async function importFile(
   return invoke("import_file", { vaultPath, sourcePath });
 }
 
+export async function importImage(
+  vaultPath: string,
+  sourcePath: string
+): Promise<string> {
+  return invoke("import_image", { vaultPath, sourcePath });
+}
+
 export async function exportFile(
   vaultPath: string,
   filePath: string,
