@@ -41,14 +41,19 @@ fn build_tree(dir: &Path, base: &Path) -> Vec<FileEntry> {
                     path: relative,
                     is_dir: true,
                     children: Some(children),
+                    file_type: None,
                 });
-            } else if name.ends_with(".md") || name.ends_with(".markdown") || name.ends_with(".txt")
-            {
+            } else {
+                let file_type = path
+                    .extension()
+                    .and_then(|e| e.to_str())
+                    .map(|e| e.to_lowercase());
                 entries.push(FileEntry {
                     name,
                     path: relative,
                     is_dir: false,
                     children: None,
+                    file_type,
                 });
             }
         }

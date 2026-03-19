@@ -22,6 +22,7 @@ import {
   renameFile,
 } from "@/lib/tauri";
 import { useSettingsStore } from "@/stores/settings-store";
+import { getFileIcon, isEditableFile, openWithSystem } from "@/lib/file-utils";
 
 interface FileTreeItemProps {
   entry: FileEntry;
@@ -48,11 +49,18 @@ function FileTreeItem({ entry, depth, onFileClick }: FileTreeItemProps) {
 
   const isActive = !entry.is_dir && activeTabPath === entry.path;
 
-  const handleClick = () => {
+  const handleClick = async () => {
     if (entry.is_dir) {
       setExpanded(!expanded);
-    } else {
+    } else if (isEditableFile(entry.file_type)) {
       onFileClick(entry.path);
+    } else if (vaultPath) {
+      const fullPath = `${vaultPath}/${entry.path}`;
+      try {
+        await openWithSystem(fullPath);
+      } catch (e) {
+        console.error("Error opening file with system:", e);
+      }
     }
   };
 
@@ -140,10 +148,15 @@ function FileTreeItem({ entry, depth, onFileClick }: FileTreeItemProps) {
             )}
           </>
         ) : (
-          <>
-            <span className="w-3.5" />
-            <FileText className="size-3.5 shrink-0 text-muted-foreground" />
-          </>
+          (() => {
+            const Icon = getFileIcon(entry.file_type);
+            return (
+              <>
+                <span className="w-3.5" />
+                <Icon className="size-3.5 shrink-0 text-muted-foreground" />
+              </>
+            );
+          })()
         )}
 
         {isRenaming ? (

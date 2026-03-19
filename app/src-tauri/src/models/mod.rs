@@ -6,10 +6,18 @@ pub struct FileEntry {
     pub path: String,
     pub is_dir: bool,
     pub children: Option<Vec<FileEntry>>,
+    pub file_type: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VaultInfo {
     pub path: String,
     pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ImportResult {
+    pub relative_path: String,
+    pub was_converted: bool,
+    pub original_format: String,
 }

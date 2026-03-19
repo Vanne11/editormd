@@ -3,6 +3,13 @@ export interface FileEntry {
   path: string;
   is_dir: boolean;
   children?: FileEntry[];
+  file_type?: string;
+}
+
+export interface ImportResult {
+  relative_path: string;
+  was_converted: boolean;
+  original_format: string;
 }
 
 export interface VaultInfo {

@@ -29,13 +29,15 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { open, save } from "@tauri-apps/plugin-dialog";
+import { open } from "@tauri-apps/plugin-dialog";
 import { useUIStore } from "@/stores/ui-store";
 import { useEditorStore } from "@/stores/editor-store";
 import { useVaultStore } from "@/stores/vault-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { executeMarkdownAction, insertImageReference } from "@/lib/markdown-commands";
-import { importFile, importImage, exportFile } from "@/lib/tauri";
+import { importImage, importFileSmart, writeFile } from "@/lib/tauri";
+import { htmlToMarkdown } from "@/lib/html-to-markdown";
+import { ExportDialog } from "./ExportDialog";
 import type { ViewMode } from "@/types";
 
 type ToolbarKey =
@@ -84,6 +86,7 @@ export function EditorToolbar() {
   const refreshFileTree = useVaultStore((s) => s.refreshFileTree);
   const t = useSettingsStore((s) => s.t);
   const [exportStatus, setExportStatus] = useState<"idle" | "success" | "error">("idle");
+  const [showExportDialog, setShowExportDialog] = useState(false);
 
   const handleAction = (key: string) => {
     if (editorView) {
@@ -114,7 +117,10 @@ export function EditorToolbar() {
     const selected = await open({
       multiple: true,
       filters: [
+        { name: "Todos los soportados", extensions: ["md", "markdown", "txt", "html", "htm", "docx", "org", "rst", "pdf", "png", "jpg", "jpeg", "gif", "svg", "webp", "bmp", "mp4", "mkv", "zip", "csv"] },
         { name: "Markdown", extensions: ["md", "markdown", "txt"] },
+        { name: "Convertibles", extensions: ["html", "htm", "docx", "org", "rst"] },
+        { name: "Todos los archivos", extensions: ["*"] },
       ],
     });
     if (!selected) return;
@@ -122,9 +128,24 @@ export function EditorToolbar() {
     for (const filePath of files) {
       if (typeof filePath === "string") {
         try {
-          const relativePath = await importFile(vaultPath, filePath);
-          await refreshFileTree();
-          await openFile(vaultPath, relativePath);
+          const result = await importFileSmart(vaultPath, filePath);
+          // Handle HTML fallback (frontend conversion when pandoc unavailable)
+          if (!result.was_converted && result.relative_path.startsWith("__html_convert__:")) {
+            const htmlContent = result.relative_path.slice("__html_convert__:".length);
+            const md = htmlToMarkdown(htmlContent);
+            const fileName = filePath.split("/").pop()?.replace(/\.[^.]+$/, "") || "imported";
+            const mdPath = `${fileName}.md`;
+            await writeFile(vaultPath, mdPath, md);
+            await refreshFileTree();
+            await openFile(vaultPath, mdPath);
+          } else {
+            await refreshFileTree();
+            // Only open editable files in the editor
+            const ext = result.original_format;
+            if (["md", "markdown", "txt", "html", "htm", "docx", "org", "rst"].includes(ext) || result.was_converted) {
+              await openFile(vaultPath, result.relative_path);
+            }
+          }
         } catch (e) {
           console.error("Error importing:", e);
         }
@@ -132,25 +153,8 @@ export function EditorToolbar() {
     }
   };
 
-  const handleExport = async () => {
-    if (!vaultPath || !activeTab) return;
-    const destPath = await save({
-      defaultPath: activeTab.name,
-      filters: [
-        { name: "Markdown", extensions: ["md"] },
-        { name: "Todos los archivos", extensions: ["*"] },
-      ],
-    });
-    if (destPath && typeof destPath === "string") {
-      try {
-        await exportFile(vaultPath, activeTab.path, destPath);
-        setExportStatus("success");
-      } catch (e) {
-        console.error("Error exporting:", e);
-        setExportStatus("error");
-      }
-      setTimeout(() => setExportStatus("idle"), 2000);
-    }
+  const handleExport = () => {
+    setShowExportDialog(true);
   };
 
   const ExportIcon =
@@ -164,64 +168,67 @@ export function EditorToolbar() {
     "size-3.5";
 
   return (
-    <div className="flex items-center gap-0.5 px-2 py-1 border-b border-border bg-background/80 overflow-x-auto">
-      {markdownActions.map((action) => (
-        <Tooltip key={action.key}>
+    <>
+      <div className="flex items-center gap-0.5 px-2 py-1 border-b border-border bg-background/80 overflow-x-auto">
+        {markdownActions.map((action) => (
+          <Tooltip key={action.key}>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => handleAction(action.key)}>
+                <action.icon className="size-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{t.editor[action.key]}</TooltipContent>
+          </Tooltip>
+        ))}
+
+        <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => handleAction(action.key)}>
-              <action.icon className="size-3.5" />
+            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={handleImage}>
+              <Image className="size-3.5" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>{t.editor[action.key]}</TooltipContent>
+          <TooltipContent>{t.editor.image}</TooltipContent>
         </Tooltip>
-      ))}
 
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={handleImage}>
-            <Image className="size-3.5" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>{t.editor.image}</TooltipContent>
-      </Tooltip>
+        <div className="w-px h-5 bg-border mx-1 shrink-0" />
 
-      <div className="w-px h-5 bg-border mx-1 shrink-0" />
-
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={handleImport}>
-            <Import className="size-3.5" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>{t.sidebar.importFile}</TooltipContent>
-      </Tooltip>
-
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={handleExport} disabled={!activeTab}>
-            <ExportIcon className={exportIconClass} />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>{t.sidebar.exportFile}</TooltipContent>
-      </Tooltip>
-
-      <div className="w-px h-5 bg-border mx-1 shrink-0" />
-
-      {viewModes.map(({ mode, icon: Icon, key }) => (
-        <Tooltip key={mode}>
+        <Tooltip>
           <TooltipTrigger asChild>
-            <Button
-              variant={viewMode === mode ? "secondary" : "ghost"}
-              size="icon"
-              className="h-7 w-7 shrink-0"
-              onClick={() => setViewMode(mode)}
-            >
-              <Icon className="size-3.5" />
+            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={handleImport}>
+              <Import className="size-3.5" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>{t.editor[key]}</TooltipContent>
+          <TooltipContent>{t.sidebar.importFile}</TooltipContent>
         </Tooltip>
-      ))}
-    </div>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={handleExport} disabled={!activeTab}>
+              <ExportIcon className={exportIconClass} />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{t.sidebar.exportFile}</TooltipContent>
+        </Tooltip>
+
+        <div className="w-px h-5 bg-border mx-1 shrink-0" />
+
+        {viewModes.map(({ mode, icon: Icon, key }) => (
+          <Tooltip key={mode}>
+            <TooltipTrigger asChild>
+              <Button
+                variant={viewMode === mode ? "secondary" : "ghost"}
+                size="icon"
+                className="h-7 w-7 shrink-0"
+                onClick={() => setViewMode(mode)}
+              >
+                <Icon className="size-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{t.editor[key]}</TooltipContent>
+          </Tooltip>
+        ))}
+      </div>
+      <ExportDialog open={showExportDialog} onClose={() => setShowExportDialog(false)} />
+    </>
   );
 }
