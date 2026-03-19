@@ -3,9 +3,15 @@ import type { DecorationSet } from "@codemirror/view";
 import { StateField, RangeSetBuilder } from "@codemirror/state";
 import type { Transaction } from "@codemirror/state";
 import { useVaultStore } from "@/stores/vault-store";
+import { readImageBase64 } from "@/lib/tauri";
 
 class ImageWidget extends WidgetType {
-  constructor(readonly src: string, readonly alt: string) {
+  constructor(
+    readonly src: string,
+    readonly alt: string,
+    readonly isLocal: boolean,
+    readonly vaultPath: string | null
+  ) {
     super();
   }
 
@@ -14,7 +20,6 @@ class ImageWidget extends WidgetType {
     wrapper.style.padding = "4px 0";
 
     const img = document.createElement("img");
-    img.src = this.src;
     img.alt = this.alt;
     img.style.maxWidth = "100%";
     img.style.maxHeight = "200px";
@@ -23,6 +28,18 @@ class ImageWidget extends WidgetType {
     img.onerror = () => {
       wrapper.style.display = "none";
     };
+
+    if (this.isLocal && this.vaultPath) {
+      readImageBase64(this.vaultPath, this.src)
+        .then((dataUri) => {
+          img.src = dataUri;
+        })
+        .catch(() => {
+          wrapper.style.display = "none";
+        });
+    } else {
+      img.src = this.src;
+    }
 
     wrapper.appendChild(img);
     return wrapper;
@@ -33,17 +50,13 @@ class ImageWidget extends WidgetType {
   }
 }
 
-function resolveSrc(src: string): string {
-  if (src.startsWith("http") || src.startsWith("data:")) return src;
-  const vaultPath = useVaultStore.getState().vaultPath;
-  if (vaultPath) {
-    return `vaultimg://localhost/${encodeURIComponent(vaultPath + "/" + src)}`;
-  }
-  return src;
+function isLocalPath(src: string): boolean {
+  return !src.startsWith("http://") && !src.startsWith("https://") && !src.startsWith("data:");
 }
 
 function buildDecorations(doc: { lines: number; line: (n: number) => { text: string; to: number } }): DecorationSet {
   try {
+    const vaultPath = useVaultStore.getState().vaultPath;
     const builder = new RangeSetBuilder<Decoration>();
     const regex = /!\[([^\]]*)\]\(([^)]+)\)/g;
 
@@ -53,11 +66,15 @@ function buildDecorations(doc: { lines: number; line: (n: number) => { text: str
       regex.lastIndex = 0;
       while ((match = regex.exec(line.text)) !== null) {
         const alt = match[1];
-        const src = resolveSrc(match[2]);
+        const src = match[2];
+        const local = isLocalPath(src);
         builder.add(
           line.to,
           line.to,
-          Decoration.widget({ widget: new ImageWidget(src, alt), block: true })
+          Decoration.widget({
+            widget: new ImageWidget(src, alt, local, vaultPath),
+            block: true,
+          })
         );
       }
     }

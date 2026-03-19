@@ -115,7 +115,7 @@ export function EditorArea() {
       <div className="flex-1 flex min-h-0" ref={panelsRef}>
         {(viewMode === "editor" || viewMode === "split") && (
           <div
-            className={viewMode === "split" ? "w-1/2 border-r border-border" : "w-full"}
+            className={viewMode === "split" ? "flex-1 min-w-0 border-r border-border h-full overflow-hidden" : "w-full h-full overflow-hidden"}
             data-panel="editor"
           >
             <MarkdownEditor
@@ -126,7 +126,7 @@ export function EditorArea() {
         )}
         {(viewMode === "preview" || viewMode === "split") && (
           <div
-            className={viewMode === "split" ? "w-1/2" : "w-full"}
+            className={viewMode === "split" ? "flex-1 min-w-0 h-full overflow-hidden" : "w-full h-full overflow-hidden"}
             data-panel="preview"
           >
             <MarkdownPreview

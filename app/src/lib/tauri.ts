@@ -71,6 +71,13 @@ export async function importImage(
   return invoke("import_image", { vaultPath, sourcePath });
 }
 
+export async function readImageBase64(
+  vaultPath: string,
+  filePath: string
+): Promise<string> {
+  return invoke("read_image_base64", { vaultPath, filePath });
+}
+
 export async function exportFile(
   vaultPath: string,
   filePath: string,

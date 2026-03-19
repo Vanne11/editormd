@@ -5,6 +5,7 @@ import { gfm } from "turndown-plugin-gfm";
 import mermaid from "mermaid";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useVaultStore } from "@/stores/vault-store";
+import { readImageBase64 } from "@/lib/tauri";
 
 mermaid.initialize({
   startOnLoad: false,
@@ -19,15 +20,19 @@ interface MarkdownPreviewProps {
   onChange?: (content: string) => void;
 }
 
-function resolveImages(html: string, vaultPath: string | null): string {
-  if (!vaultPath) return html;
-  return html.replace(
-    /(<img\s+[^>]*src=")(?!http|https|data:)([^"]+)(")/g,
-    (_, before, src, after) => {
-      const resolved = `vaultimg://localhost/${encodeURIComponent(vaultPath + "/" + src)}`;
-      return `${before}${resolved}${after}`;
+async function resolveLocalImages(container: HTMLElement, vaultPath: string | null) {
+  if (!vaultPath) return;
+  const images = container.querySelectorAll("img");
+  for (const img of images) {
+    const src = img.getAttribute("src");
+    if (!src || src.startsWith("http") || src.startsWith("data:")) continue;
+    try {
+      const dataUri = await readImageBase64(vaultPath, src);
+      img.src = dataUri;
+    } catch {
+      img.style.display = "none";
     }
-  );
+  }
 }
 
 async function renderMermaidBlocks(container: HTMLElement) {
@@ -79,8 +84,8 @@ export function MarkdownPreview({ content, onChange }: MarkdownPreviewProps) {
     if (!divRef.current || focusedRef.current) return;
     try {
       const raw = marked.parse(content) as string;
-      const html = resolveImages(raw, vaultPath);
-      divRef.current.innerHTML = html;
+      divRef.current.innerHTML = raw;
+      resolveLocalImages(divRef.current, vaultPath);
       renderMermaidBlocks(divRef.current);
     } catch (e) {
       console.error("Error rendering preview:", e);
@@ -121,7 +126,7 @@ export function MarkdownPreview({ content, onChange }: MarkdownPreviewProps) {
         ref={divRef}
         contentEditable={!!onChange}
         suppressContentEditableWarning
-        className="prose prose-invert max-w-none p-6 preview-content outline-none"
+        className="prose prose-invert max-w-none p-6 preview-content outline-none break-words"
         onInput={handleInput}
         onFocus={handleFocus}
         onBlur={handleBlur}

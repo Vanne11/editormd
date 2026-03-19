@@ -26,7 +26,7 @@ export function Sidebar() {
   return (
     <div
       className="flex flex-col border-r border-border bg-sidebar h-full shrink-0"
-      style={{ width: sidebarWidth }}
+      style={{ width: sidebarWidth, maxWidth: "50vw" }}
     >
       <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border">
         <Vault className="size-4 text-primary" />

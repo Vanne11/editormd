@@ -190,3 +190,28 @@ pub fn export_file(vault_path: String, file_path: String, dest_path: String) -> 
     fs::copy(&source, &dest).map_err(|e| format!("Error al exportar: {}", e))?;
     Ok(())
 }
+
+#[tauri::command]
+pub fn read_image_base64(vault_path: String, file_path: String) -> Result<String, String> {
+    let full_path = Path::new(&vault_path).join(&file_path);
+    let data = fs::read(&full_path).map_err(|e| format!("Error al leer imagen: {}", e))?;
+
+    let ext = full_path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+    let mime = match ext.as_str() {
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "gif" => "image/gif",
+        "svg" => "image/svg+xml",
+        "webp" => "image/webp",
+        "bmp" => "image/bmp",
+        _ => "application/octet-stream",
+    };
+
+    use base64::Engine;
+    let encoded = base64::engine::general_purpose::STANDARD.encode(&data);
+    Ok(format!("data:{};base64,{}", mime, encoded))
+}

@@ -81,15 +81,20 @@ export function executeMarkdownAction(view: EditorView, key: string) {
     const currentText = line.text;
     // Toggle: if prefix already present, remove it
     if (currentText.startsWith(action.prefix)) {
+      const cursorOffset = from - line.from;
+      const newCursor = line.from + Math.max(0, cursorOffset - action.prefix.length);
       view.dispatch({
         changes: { from: line.from, to: line.from + action.prefix.length, insert: "" },
+        selection: { anchor: newCursor },
       });
     } else {
       // Remove other heading/list prefixes before adding new one
       const headingMatch = currentText.match(/^(#{1,6}\s|[-*]\s\[[ x]\]\s|[-*]\s|\d+\.\s|>\s)/);
       const removeLen = headingMatch ? headingMatch[0].length : 0;
+      const newLineEnd = line.from + action.prefix.length + (currentText.length - removeLen);
       view.dispatch({
         changes: { from: line.from, to: line.from + removeLen, insert: action.prefix },
+        selection: { anchor: newLineEnd },
       });
     }
   } else if (action.type === "insert") {
