@@ -25,7 +25,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useUIStore } from "@/stores/ui-store";
+import { useEditorStore } from "@/stores/editor-store";
 import { useSettingsStore } from "@/stores/settings-store";
+import { executeMarkdownAction } from "@/lib/markdown-commands";
 import type { ViewMode } from "@/types";
 
 type ToolbarKey =
@@ -68,14 +70,21 @@ const viewModes: { mode: ViewMode; icon: React.ComponentType<{ className?: strin
 export function EditorToolbar() {
   const viewMode = useUIStore((s) => s.viewMode);
   const setViewMode = useUIStore((s) => s.setViewMode);
+  const editorView = useEditorStore((s) => s.editorView);
   const t = useSettingsStore((s) => s.t);
+
+  const handleAction = (key: string) => {
+    if (editorView) {
+      executeMarkdownAction(editorView, key);
+    }
+  };
 
   return (
     <div className="flex items-center gap-0.5 px-2 py-1 border-b border-border bg-background/80 overflow-x-auto">
       {markdownActions.map((action) => (
         <Tooltip key={action.key}>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
+            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => handleAction(action.key)}>
               <action.icon className="size-3.5" />
             </Button>
           </TooltipTrigger>

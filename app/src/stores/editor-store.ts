@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { EditorView } from "@codemirror/view";
 import type { Tab } from "@/types";
 import { readFile, writeFile } from "@/lib/tauri";
 import { getFileName } from "@/lib/utils";
@@ -8,6 +9,7 @@ interface EditorState {
   activeTabId: string | null;
   cursorLine: number;
   cursorCol: number;
+  editorView: EditorView | null;
 
   openFile: (vaultPath: string, filePath: string) => Promise<void>;
   closeTab: (tabId: string) => void;
@@ -17,6 +19,7 @@ interface EditorState {
   saveActiveTab: (vaultPath: string) => Promise<void>;
   setCursor: (line: number, col: number) => void;
   getActiveTab: () => Tab | undefined;
+  setEditorView: (view: EditorView | null) => void;
 }
 
 export const useEditorStore = create<EditorState>((set, get) => ({
@@ -24,6 +27,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   activeTabId: null,
   cursorLine: 1,
   cursorCol: 1,
+  editorView: null,
 
   openFile: async (vaultPath: string, filePath: string) => {
     const { tabs } = get();
@@ -110,5 +114,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   getActiveTab: () => {
     const { tabs, activeTabId } = get();
     return tabs.find((t) => t.id === activeTabId);
+  },
+
+  setEditorView: (view) => {
+    set({ editorView: view });
   },
 }));

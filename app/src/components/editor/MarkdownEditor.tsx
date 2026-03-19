@@ -69,6 +69,7 @@ export function MarkdownEditor({ content, onChange }: MarkdownEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const setCursor = useEditorStore((s) => s.setCursor);
+  const setEditorView = useEditorStore((s) => s.setEditorView);
   const theme = useUIStore((s) => s.theme);
 
   const onChangeRef = useRef(onChange);
@@ -114,12 +115,14 @@ export function MarkdownEditor({ content, onChange }: MarkdownEditorProps) {
       state,
       parent: containerRef.current,
     });
+    setEditorView(viewRef.current);
   }, []);
 
   useEffect(() => {
     createEditor();
     return () => {
       viewRef.current?.destroy();
+      setEditorView(null);
     };
   }, [createEditor]);
 
