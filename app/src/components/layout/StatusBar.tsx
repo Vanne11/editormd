@@ -23,6 +23,7 @@ export function StatusBar() {
   const cursorCol = useEditorStore((s) => s.cursorCol);
   const theme = useUIStore((s) => s.theme);
   const setTheme = useUIStore((s) => s.setTheme);
+  const viewMode = useUIStore((s) => s.viewMode);
   const setSettingsOpen = useUIStore((s) => s.setSettingsOpen);
   const { t, locale, setLocale } = useSettingsStore();
 
@@ -44,9 +45,11 @@ export function StatusBar() {
   return (
     <div className="flex items-center justify-between px-3 py-1 border-t border-border bg-background text-xs text-muted-foreground select-none">
       <div className="flex items-center gap-4">
-        <span>
-          {t.statusBar.line} {cursorLine}, {t.statusBar.col} {cursorCol}
-        </span>
+        {viewMode !== "wysiwyg" && (
+          <span>
+            {t.statusBar.line} {cursorLine}, {t.statusBar.col} {cursorCol}
+          </span>
+        )}
         {activeTab && (
           <>
             <span>{words} {t.statusBar.words}</span>

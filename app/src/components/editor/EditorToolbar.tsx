@@ -15,9 +15,9 @@ import {
   Image,
   Table,
   Minus,
-  Eye,
   SplitSquareHorizontal,
   FileEdit,
+  FileCode,
   Import,
   FileOutput,
   Check,
@@ -34,16 +34,10 @@ import { useUIStore } from "@/stores/ui-store";
 import { useEditorStore } from "@/stores/editor-store";
 import { useVaultStore } from "@/stores/vault-store";
 import { useSettingsStore } from "@/stores/settings-store";
-import { executeMarkdownAction, insertImageReference } from "@/lib/markdown-commands";
 import { importImage, importFileSmart } from "@/lib/tauri";
 import { ExportDialog } from "./ExportDialog";
 import type { ViewMode } from "@/types";
-
-type ToolbarKey =
-  | "bold" | "italic" | "strikethrough"
-  | "heading1" | "heading2" | "heading3"
-  | "list" | "orderedList" | "checklist"
-  | "code" | "quote" | "link" | "table" | "separator";
+import type { ToolbarKey } from "@/lib/editor-surface/types";
 
 interface ToolbarAction {
   icon: React.ComponentType<{ className?: string }>;
@@ -67,34 +61,32 @@ const markdownActions: ToolbarAction[] = [
   { icon: Minus, key: "separator" },
 ];
 
-type ViewModeKey = "editorOnly" | "splitView" | "previewOnly";
+type ViewModeKey = "wysiwygView" | "splitView" | "codeView";
 
 const viewModes: { mode: ViewMode; icon: React.ComponentType<{ className?: string }>; key: ViewModeKey }[] = [
-  { mode: "editor", icon: FileEdit, key: "editorOnly" },
+  { mode: "wysiwyg", icon: FileEdit, key: "wysiwygView" },
   { mode: "split", icon: SplitSquareHorizontal, key: "splitView" },
-  { mode: "preview", icon: Eye, key: "previewOnly" },
+  { mode: "code", icon: FileCode, key: "codeView" },
 ];
 
 export function EditorToolbar() {
   const viewMode = useUIStore((s) => s.viewMode);
   const setViewMode = useUIStore((s) => s.setViewMode);
-  const editorView = useEditorStore((s) => s.editorView);
+  const activeSurface = useEditorStore((s) => s.activeSurface);
   const activeTab = useEditorStore((s) => s.tabs.find((t) => t.id === s.activeTabId));
   const openFile = useEditorStore((s) => s.openFile);
   const vaultPath = useVaultStore((s) => s.vaultPath);
   const refreshFileTree = useVaultStore((s) => s.refreshFileTree);
   const t = useSettingsStore((s) => s.t);
-  const [exportStatus, setExportStatus] = useState<"idle" | "success" | "error">("idle");
+  const [exportStatus] = useState<"idle" | "success" | "error">("idle");
   const [showExportDialog, setShowExportDialog] = useState(false);
 
-  const handleAction = (key: string) => {
-    if (editorView) {
-      executeMarkdownAction(editorView, key);
-    }
+  const handleAction = (key: ToolbarKey) => {
+    activeSurface?.runAction(key);
   };
 
   const handleImage = async () => {
-    if (!vaultPath || !editorView) return;
+    if (!vaultPath || !activeSurface) return;
     const selected = await open({
       multiple: false,
       filters: [
@@ -105,7 +97,7 @@ export function EditorToolbar() {
     try {
       const relativePath = await importImage(vaultPath, selected);
       await refreshFileTree();
-      insertImageReference(editorView, relativePath);
+      activeSurface.insertImage(relativePath);
     } catch (e) {
       console.error("Error importing image:", e);
     }

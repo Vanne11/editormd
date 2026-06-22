@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { FileEntry, VaultInfo } from "@/types";
 import { getFileTree, getVaultInfo } from "@/lib/tauri";
+import { useRecentStore } from "@/stores/recent-store";
 
 interface VaultState {
   vaultPath: string | null;
@@ -28,6 +29,7 @@ export const useVaultStore = create<VaultState>((set, get) => ({
       ]);
       set({ vaultPath: path, vaultInfo: info, fileTree: tree, isLoading: false });
       localStorage.setItem("editormd_last_vault", path);
+      useRecentStore.getState().loadForVault(path);
     } catch (e) {
       console.error("Error opening vault:", e);
       set({ isLoading: false });

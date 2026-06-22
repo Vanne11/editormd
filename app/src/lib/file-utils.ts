@@ -10,6 +10,7 @@ import {
   FileType,
   Presentation,
 } from "lucide-react";
+import type { FileEntry } from "@/types";
 
 const ICON_MAP: Record<string, typeof File> = {
   // Documents
@@ -84,4 +85,20 @@ export function isEditableFile(fileType?: string): boolean {
 export async function openWithSystem(fullPath: string): Promise<void> {
   const { open } = await import("@tauri-apps/plugin-shell");
   await open(fullPath);
+}
+
+/** Aplana el árbol de archivos a una lista de solo archivos (sin carpetas). */
+export function flattenFiles(tree: FileEntry[]): FileEntry[] {
+  const out: FileEntry[] = [];
+  const walk = (entries: FileEntry[]) => {
+    for (const entry of entries) {
+      if (entry.is_dir) {
+        if (entry.children) walk(entry.children);
+      } else {
+        out.push(entry);
+      }
+    }
+  };
+  walk(tree);
+  return out;
 }

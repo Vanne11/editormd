@@ -7,6 +7,7 @@ interface UIState {
   viewMode: ViewMode;
   theme: Theme;
   commandPaletteOpen: boolean;
+  globalSearchOpen: boolean;
   settingsOpen: boolean;
 
   setSidebarWidth: (width: number) => void;
@@ -15,6 +16,8 @@ interface UIState {
   setTheme: (theme: Theme) => void;
   toggleCommandPalette: () => void;
   setCommandPaletteOpen: (open: boolean) => void;
+  toggleGlobalSearch: () => void;
+  setGlobalSearchOpen: (open: boolean) => void;
   setSettingsOpen: (open: boolean) => void;
 }
 
@@ -23,9 +26,10 @@ const savedTheme = (localStorage.getItem("editormd_theme") as Theme) || "dark";
 export const useUIStore = create<UIState>((set) => ({
   sidebarWidth: 260,
   sidebarVisible: true,
-  viewMode: "split",
+  viewMode: "wysiwyg",
   theme: savedTheme,
   commandPaletteOpen: false,
+  globalSearchOpen: false,
   settingsOpen: false,
 
   setSidebarWidth: (width: number) => set({ sidebarWidth: width }),
@@ -44,6 +48,11 @@ export const useUIStore = create<UIState>((set) => ({
     set((state) => ({ commandPaletteOpen: !state.commandPaletteOpen })),
 
   setCommandPaletteOpen: (open: boolean) => set({ commandPaletteOpen: open }),
+
+  toggleGlobalSearch: () =>
+    set((state) => ({ globalSearchOpen: !state.globalSearchOpen })),
+
+  setGlobalSearchOpen: (open: boolean) => set({ globalSearchOpen: open }),
 
   setSettingsOpen: (open: boolean) => set({ settingsOpen: open }),
 }));

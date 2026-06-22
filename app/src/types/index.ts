@@ -17,6 +17,18 @@ export interface VaultInfo {
   name: string;
 }
 
+export interface SearchMatch {
+  line: number;
+  text: string;
+}
+
+export interface SearchResult {
+  path: string;
+  name: string;
+  name_match: boolean;
+  matches: SearchMatch[];
+}
+
 export interface Tab {
   id: string;
   path: string;
@@ -25,6 +37,6 @@ export interface Tab {
   isDirty: boolean;
 }
 
-export type ViewMode = "editor" | "preview" | "split";
+export type ViewMode = "wysiwyg" | "code" | "split";
 
 export type Theme = "dark" | "light" | "sepia" | "pastel" | "dracula" | "alucard";

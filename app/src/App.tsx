@@ -2,11 +2,13 @@ import { useEffect } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppShell } from "@/components/layout/AppShell";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { useAutoSave } from "@/hooks/useAutoSave";
 import { useVaultStore } from "@/stores/vault-store";
 import { useUIStore } from "@/stores/ui-store";
 
 function App() {
   useKeyboardShortcuts();
+  useAutoSave();
 
   const setVaultPath = useVaultStore((s) => s.setVaultPath);
   const theme = useUIStore((s) => s.theme);

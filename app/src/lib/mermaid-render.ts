@@ -1,3 +1,7 @@
+import mermaid from "mermaid";
+import { initMermaid } from "@/lib/mermaid-theme";
+import type { Theme } from "@/types";
+
 /**
  * Convierte foreignObject (HTML) a elementos SVG <text> nativos
  * para que resvg pueda renderizar el texto correctamente.
@@ -59,29 +63,50 @@ function convertForeignObjectToText(svg: SVGElement): void {
   });
 }
 
+/** Extrae los bloques ```mermaid del markdown, en orden de aparición. */
+export function extractMermaidBlocks(markdown: string): string[] {
+  const regex = /```mermaid\s*\n([\s\S]*?)```/g;
+  const blocks: string[] = [];
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(markdown)) !== null) {
+    blocks.push(match[1].trim());
+  }
+  return blocks;
+}
+
 /**
- * Extrae los SVGs de mermaid ya renderizados en el preview DOM.
- * Convierte foreignObject a texto SVG nativo para compatibilidad con resvg.
- * Retorna un array de strings SVG en orden de aparición.
+ * Renderiza los diagramas mermaid del markdown a SVG bajo demanda, sin depender
+ * de ningún componente montado. Sirve para exportar en cualquier modo de vista.
+ * Devuelve un SVG por bloque (string vacío si alguno falla).
  */
-export function getMermaidSvgsFromPreview(): string[] {
-  const wrappers = document.querySelectorAll("[data-mermaid]");
+export async function renderMermaidSvgsFromMarkdown(
+  markdown: string,
+  theme: Theme
+): Promise<string[]> {
+  const blocks = extractMermaidBlocks(markdown);
+  if (blocks.length === 0) return [];
+
+  initMermaid(theme);
   const results: string[] = [];
 
-  wrappers.forEach((wrapper) => {
-    const svg = wrapper.querySelector("svg");
-    if (svg) {
-      // Clonar para no mutar el DOM visible
-      const clone = svg.cloneNode(true) as SVGElement;
-      // Asegurar que tenga xmlns para que resvg lo parsee
-      clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-      // Convertir foreignObject → <text> SVG nativo
-      convertForeignObjectToText(clone);
-      results.push(clone.outerHTML);
-    } else {
+  for (let i = 0; i < blocks.length; i++) {
+    try {
+      const { svg } = await mermaid.render(`export-mermaid-${i}`, blocks[i]);
+      // Parsear el SVG para aplicar la conversión de foreignObject → <text>.
+      const doc = new DOMParser().parseFromString(svg, "image/svg+xml");
+      const svgEl = doc.querySelector("svg");
+      if (svgEl) {
+        svgEl.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+        convertForeignObjectToText(svgEl as unknown as SVGElement);
+        results.push(svgEl.outerHTML);
+      } else {
+        results.push(svg);
+      }
+    } catch (e) {
+      console.error("Error rendering mermaid for export:", e);
       results.push("");
     }
-  });
+  }
 
   return results;
 }

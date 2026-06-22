@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { save } from "@tauri-apps/plugin-dialog";
 import { useEditorStore } from "@/stores/editor-store";
 import { useVaultStore } from "@/stores/vault-store";
+import { useUIStore } from "@/stores/ui-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import {
   exportFile,
@@ -21,7 +22,7 @@ import {
   exportAsPdf,
   exportAsDocx,
 } from "@/lib/tauri";
-import { getMermaidSvgsFromPreview } from "@/lib/mermaid-render";
+import { renderMermaidSvgsFromMarkdown } from "@/lib/mermaid-render";
 
 interface ExportDialogProps {
   open: boolean;
@@ -51,6 +52,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
 
   const activeTab = useEditorStore((s) => s.tabs.find((t) => t.id === s.activeTabId));
   const vaultPath = useVaultStore((s) => s.vaultPath);
+  const theme = useUIStore((s) => s.theme);
   const t = useSettingsStore((s) => s.t);
 
   if (!open || !activeTab) return null;
@@ -70,10 +72,11 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
 
     setStatus("exporting");
     try {
-      // Extraer SVGs de mermaid ya renderizados en el preview
+      // Renderizar los SVGs de mermaid bajo demanda desde el markdown
+      // (funciona en cualquier modo de vista, sin depender del preview montado).
       let mermaidImages: string[] = [];
       if (selectedFormat === "pdf" || selectedFormat === "docx") {
-        mermaidImages = getMermaidSvgsFromPreview();
+        mermaidImages = await renderMermaidSvgsFromMarkdown(activeTab.content, theme);
       }
 
       switch (selectedFormat) {

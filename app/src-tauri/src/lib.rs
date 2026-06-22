@@ -5,6 +5,7 @@ use commands::files;
 use commands::vault;
 use commands::import;
 use commands::export;
+use commands::search;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -26,6 +27,7 @@ pub fn run() {
             vault::get_file_tree,
             vault::get_vault_info,
             vault::count_vault_notes,
+            search::search_vault,
             files::read_file,
             files::write_file,
             files::create_file,

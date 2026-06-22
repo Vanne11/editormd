@@ -279,6 +279,24 @@ body {
   text-decoration: underline;
 }
 
+.preview-content a.wikilink {
+  text-decoration: none;
+  background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+  border-radius: 4px;
+  padding: 0 0.25em;
+  cursor: pointer;
+}
+
+.preview-content a.wikilink:hover {
+  background: color-mix(in srgb, var(--color-primary) 26%, transparent);
+}
+
+.preview-content a.wikilink[data-missing="true"] {
+  color: var(--color-muted-foreground);
+  background: transparent;
+  border-bottom: 1px dashed var(--color-muted-foreground);
+}
+
 .preview-content code {
   background: var(--color-muted);
   padding: 0.2em 0.4em;
@@ -359,4 +377,96 @@ body {
 
 .preview-content .mermaid svg * {
   border-color: initial;
+}
+
+/* ===== Milkdown (WYSIWYG) ===== */
+.milkdown {
+  height: 100%;
+  background: var(--color-editor-bg);
+}
+
+.milkdown .milkdown-editor {
+  outline: none;
+  min-height: 100%;
+  padding: 1.5rem 2rem;
+  color: var(--color-editor-fg);
+  caret-color: var(--color-editor-cursor, var(--color-primary));
+  line-height: 1.7;
+}
+
+.milkdown .milkdown-editor ::selection {
+  background: var(--color-editor-selection);
+}
+
+/* Placeholder de párrafo vacío que muestra Milkdown */
+.milkdown .milkdown-editor .crepe-placeholder::before,
+.milkdown .milkdown-editor [data-placeholder]::before {
+  color: var(--color-muted-foreground);
+}
+
+/* La imagen y los bloques heredan estilos de .preview-content (misma clase). */
+
+/* Resaltado de sintaxis (Prism/refractor) en WYSIWYG */
+.milkdown .token.comment,
+.milkdown .token.prolog,
+.milkdown .token.doctype,
+.milkdown .token.cdata {
+  color: var(--color-muted-foreground);
+  font-style: italic;
+}
+.milkdown .token.punctuation {
+  color: var(--color-muted-foreground);
+}
+.milkdown .token.keyword,
+.milkdown .token.rule,
+.milkdown .token.important,
+.milkdown .token.atrule {
+  color: var(--color-primary);
+}
+.milkdown .token.string,
+.milkdown .token.char,
+.milkdown .token.attr-value,
+.milkdown .token.regex {
+  color: #6aa84f;
+}
+.milkdown .token.number,
+.milkdown .token.boolean,
+.milkdown .token.constant,
+.milkdown .token.symbol {
+  color: #d19a66;
+}
+.milkdown .token.function,
+.milkdown .token.class-name,
+.milkdown .token.title {
+  color: #61afef;
+}
+.milkdown .token.operator,
+.milkdown .token.entity,
+.milkdown .token.tag {
+  color: #c678dd;
+}
+.milkdown .token.attr-name,
+.milkdown .token.property {
+  color: #e06c75;
+}
+
+/* Mermaid renderizado en WYSIWYG */
+.milkdown .mermaid-preview svg {
+  max-width: 100%;
+  height: auto;
+}
+.milkdown .mermaid-loading {
+  color: var(--color-muted-foreground);
+  font-size: 0.85em;
+}
+
+/* Math (KaTeX) */
+.milkdown .math-inline,
+.milkdown .math-block {
+  color: var(--color-editor-fg);
+}
+.milkdown .math-block {
+  display: block;
+  text-align: center;
+  margin: 0.75em 0;
 }

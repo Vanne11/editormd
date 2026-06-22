@@ -6,13 +6,17 @@ import { useVaultStore } from "@/stores/vault-store";
 import { readImageBase64 } from "@/lib/tauri";
 
 class ImageWidget extends WidgetType {
-  constructor(
-    readonly src: string,
-    readonly alt: string,
-    readonly isLocal: boolean,
-    readonly vaultPath: string | null
-  ) {
+  readonly src: string;
+  readonly alt: string;
+  readonly isLocal: boolean;
+  readonly vaultPath: string | null;
+
+  constructor(src: string, alt: string, isLocal: boolean, vaultPath: string | null) {
     super();
+    this.src = src;
+    this.alt = alt;
+    this.isLocal = isLocal;
+    this.vaultPath = vaultPath;
   }
 
   toDOM() {

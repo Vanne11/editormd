@@ -21,3 +21,17 @@ pub struct ImportResult {
     pub was_converted: bool,
     pub original_format: String,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SearchMatch {
+    pub line: usize,
+    pub text: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SearchResult {
+    pub path: String,
+    pub name: String,
+    pub name_match: bool,
+    pub matches: Vec<SearchMatch>,
+}

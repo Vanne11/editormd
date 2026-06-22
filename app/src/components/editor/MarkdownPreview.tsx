@@ -1,38 +1,19 @@
-import { useEffect, useRef, useMemo, useCallback } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { marked } from "marked";
-import TurndownService from "turndown";
-import { gfm } from "turndown-plugin-gfm";
 import mermaid from "mermaid";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useVaultStore } from "@/stores/vault-store";
 import { useUIStore } from "@/stores/ui-store";
 import { readImageBase64 } from "@/lib/tauri";
-import type { Theme } from "@/types";
-
-const mermaidThemeMap: Record<Theme, string> = {
-  dark: "dark",
-  light: "default",
-  sepia: "neutral",
-  pastel: "default",
-  dracula: "dark",
-  alucard: "dark",
-};
-
-function initMermaid(appTheme: Theme) {
-  mermaid.initialize({
-    startOnLoad: false,
-    theme: mermaidThemeMap[appTheme] || "dark",
-    securityLevel: "loose",
-    flowchart: { htmlLabels: false },
-    sequence: { useMaxWidth: false },
-  });
-}
+import { wikilinkExtension, resolveWikilink } from "@/lib/wikilink";
+import { navigateWikilink } from "@/lib/wikilink-navigate";
+import { initMermaid } from "@/lib/mermaid-theme";
+import type { FileEntry } from "@/types";
 
 marked.use({ gfm: true, breaks: true });
+marked.use({ extensions: [wikilinkExtension] });
 
 interface MarkdownPreviewProps {
   content: string;
-  onChange?: (content: string) => void;
 }
 
 async function resolveLocalImages(container: HTMLElement, vaultPath: string | null) {
@@ -47,6 +28,15 @@ async function resolveLocalImages(container: HTMLElement, vaultPath: string | nu
     } catch {
       img.style.display = "none";
     }
+  }
+}
+
+function markMissingWikilinks(container: HTMLElement, tree: FileEntry[]) {
+  const links = container.querySelectorAll<HTMLAnchorElement>("a.wikilink");
+  for (const link of links) {
+    const target = decodeURIComponent(link.getAttribute("data-wikilink") || "");
+    const resolved = resolveWikilink(target, tree);
+    link.setAttribute("data-missing", resolved ? "false" : "true");
   }
 }
 
@@ -77,84 +67,44 @@ async function renderMermaidBlocks(container: HTMLElement) {
   }
 }
 
-export function MarkdownPreview({ content, onChange }: MarkdownPreviewProps) {
+/** Vista de solo lectura del markdown renderizado (modo split). */
+export function MarkdownPreview({ content }: MarkdownPreviewProps) {
   const vaultPath = useVaultStore((s) => s.vaultPath);
+  const fileTree = useVaultStore((s) => s.fileTree);
   const theme = useUIStore((s) => s.theme);
   const divRef = useRef<HTMLDivElement>(null);
-  const focusedRef = useRef(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
-  const turndown = useMemo(() => {
-    const td = new TurndownService({
-      headingStyle: "atx",
-      codeBlockStyle: "fenced",
-      emDelimiter: "*",
-    });
-    td.use(gfm);
-    td.addRule("mermaid", {
-      filter: (node) =>
-        node.nodeName === "DIV" && node.getAttribute("data-mermaid") !== null,
-      replacement: (_content, node) => {
-        const code = (node as HTMLElement).getAttribute("data-mermaid") || "";
-        return "\n```mermaid\n" + code + "\n```\n";
-      },
-    });
-    return td;
-  }, []);
-
-  // Render markdown → HTML only when NOT focused
   useEffect(() => {
-    if (!divRef.current || focusedRef.current) return;
+    if (!divRef.current) return;
     try {
       initMermaid(theme);
       const raw = marked.parse(content) as string;
       divRef.current.innerHTML = raw;
       resolveLocalImages(divRef.current, vaultPath);
+      markMissingWikilinks(divRef.current, fileTree);
       renderMermaidBlocks(divRef.current);
     } catch (e) {
       console.error("Error rendering preview:", e);
       if (divRef.current) divRef.current.textContent = content;
     }
-  }, [content, vaultPath, theme]);
+  }, [content, vaultPath, theme, fileTree]);
 
-  // Sync preview edits → store (debounced)
-  const syncToEditor = useCallback(() => {
-    if (!divRef.current || !onChange) return;
-    const md = turndown.turndown(divRef.current.innerHTML);
-    onChange(md);
-  }, [onChange, turndown]);
-
-  const handleInput = useCallback(() => {
-    clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(syncToEditor, 400);
-  }, [syncToEditor]);
-
-  const handleFocus = useCallback(() => {
-    focusedRef.current = true;
-  }, []);
-
-  const handleBlur = useCallback(() => {
-    clearTimeout(debounceRef.current);
-    focusedRef.current = false;
-    syncToEditor();
-  }, [syncToEditor]);
-
-  // Cleanup debounce on unmount
-  useEffect(() => {
-    return () => clearTimeout(debounceRef.current);
+  // Navigate wikilinks on click (open existing note or create a new one).
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    const anchor = (e.target as HTMLElement).closest<HTMLAnchorElement>("a.wikilink");
+    if (!anchor) return;
+    e.preventDefault();
+    const target = decodeURIComponent(anchor.getAttribute("data-wikilink") || "");
+    navigateWikilink(target);
   }, []);
 
   return (
-    <ScrollArea className="h-full">
+    <div className="preview-scroll h-full overflow-auto">
       <div
         ref={divRef}
-        contentEditable={!!onChange}
-        suppressContentEditableWarning
-        className="prose prose-invert max-w-none p-6 preview-content outline-none break-words"
-        onInput={handleInput}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
+        className="prose prose-invert max-w-none p-6 preview-content break-words"
+        onClick={handleClick}
       />
-    </ScrollArea>
+    </div>
   );
 }

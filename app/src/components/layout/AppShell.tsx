@@ -3,6 +3,8 @@ import { Sidebar } from "./Sidebar";
 import { StatusBar } from "./StatusBar";
 import { EditorArea } from "@/components/editor/EditorArea";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
+import { CommandPalette } from "@/components/command/CommandPalette";
+import { GlobalSearch } from "@/components/command/GlobalSearch";
 import { useUIStore } from "@/stores/ui-store";
 
 export function AppShell() {
@@ -49,6 +51,8 @@ export function AppShell() {
       </div>
       <StatusBar />
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+      <CommandPalette />
+      <GlobalSearch />
     </div>
   );
 }

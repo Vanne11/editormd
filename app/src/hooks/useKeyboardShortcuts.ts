@@ -14,6 +14,7 @@ export function useKeyboardShortcuts() {
   const setViewMode = useUIStore((s) => s.setViewMode);
   const toggleSidebar = useUIStore((s) => s.toggleSidebar);
   const toggleCommandPalette = useUIStore((s) => s.toggleCommandPalette);
+  const toggleGlobalSearch = useUIStore((s) => s.toggleGlobalSearch);
   const settingsOpen = useUIStore((s) => s.settingsOpen);
   const setSettingsOpen = useUIStore((s) => s.setSettingsOpen);
 
@@ -55,6 +56,13 @@ export function useKeyboardShortcuts() {
         return;
       }
 
+      // Ctrl+Shift+F - Global search (must come before single-key checks)
+      if (ctrl && e.shiftKey && e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        toggleGlobalSearch();
+        return;
+      }
+
       // Ctrl+P - Command palette
       if (ctrl && e.key === "p") {
         e.preventDefault();
@@ -62,24 +70,24 @@ export function useKeyboardShortcuts() {
         return;
       }
 
-      // Ctrl+1 - Editor only
+      // Ctrl+1 - WYSIWYG
       if (ctrl && e.key === "1") {
         e.preventDefault();
-        setViewMode("editor");
+        setViewMode("wysiwyg");
         return;
       }
 
-      // Ctrl+2 - Split view
+      // Ctrl+2 - Split (code + preview)
       if (ctrl && e.key === "2") {
         e.preventDefault();
         setViewMode("split");
         return;
       }
 
-      // Ctrl+3 - Preview only
+      // Ctrl+3 - Code
       if (ctrl && e.key === "3") {
         e.preventDefault();
-        setViewMode("preview");
+        setViewMode("code");
         return;
       }
 
@@ -109,6 +117,7 @@ export function useKeyboardShortcuts() {
     setViewMode,
     toggleSidebar,
     toggleCommandPalette,
+    toggleGlobalSearch,
     settingsOpen,
     setSettingsOpen,
   ]);

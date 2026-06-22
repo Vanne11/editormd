@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import { MarkdownEditor } from "./MarkdownEditor";
 import { MarkdownPreview } from "./MarkdownPreview";
+import { MilkdownEditor } from "./milkdown/MilkdownEditor";
 import { EditorToolbar } from "./EditorToolbar";
 import { EditorTabs } from "./EditorTabs";
 import { useEditorStore } from "@/stores/editor-store";
@@ -63,7 +64,7 @@ export function EditorArea() {
     const tryAttach = () => {
       if (disposed) return;
       editorEl = container.querySelector('[data-panel="editor"] .cm-scroller');
-      previewEl = container.querySelector('[data-panel="preview"] [data-radix-scroll-area-viewport]');
+      previewEl = container.querySelector('[data-panel="preview"] .preview-scroll');
       if (editorEl && previewEl) {
         editorEl.addEventListener("scroll", onEditorScroll);
         previewEl.addEventListener("scroll", onPreviewScroll);
@@ -113,7 +114,15 @@ export function EditorArea() {
       <EditorTabs />
       <EditorToolbar />
       <div className="flex-1 flex min-h-0" ref={panelsRef}>
-        {(viewMode === "editor" || viewMode === "split") && (
+        {viewMode === "wysiwyg" && (
+          <div className="w-full h-full overflow-hidden" data-panel="wysiwyg">
+            <MilkdownEditor
+              content={activeTab.content}
+              onChange={handleContentChange}
+            />
+          </div>
+        )}
+        {(viewMode === "code" || viewMode === "split") && (
           <div
             className={viewMode === "split" ? "flex-1 min-w-0 border-r border-border h-full overflow-hidden" : "w-full h-full overflow-hidden"}
             data-panel="editor"
@@ -124,15 +133,13 @@ export function EditorArea() {
             />
           </div>
         )}
-        {(viewMode === "preview" || viewMode === "split") && (
+        {viewMode === "split" && (
           <div
-            className={viewMode === "split" ? "flex-1 min-w-0 h-full overflow-hidden" : "w-full h-full overflow-hidden"}
+            className="flex-1 min-w-0 h-full overflow-hidden"
             data-panel="preview"
           >
-            <MarkdownPreview
-              content={activeTab.content}
-              onChange={handleContentChange}
-            />
+            {/* Solo lectura: sin onChange (evita el round-trip Turndown roto). */}
+            <MarkdownPreview content={activeTab.content} />
           </div>
         )}
       </div>

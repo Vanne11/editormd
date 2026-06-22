@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { FileEntry, VaultInfo, ImportResult } from "@/types";
+import type { FileEntry, VaultInfo, ImportResult, SearchResult } from "@/types";
 
 export async function getFileTree(vaultPath: string): Promise<FileEntry[]> {
   return invoke("get_file_tree", { vaultPath });
@@ -11,6 +11,13 @@ export async function getVaultInfo(vaultPath: string): Promise<VaultInfo> {
 
 export async function countVaultNotes(vaultPath: string): Promise<number> {
   return invoke("count_vault_notes", { vaultPath });
+}
+
+export async function searchVault(
+  vaultPath: string,
+  query: string
+): Promise<SearchResult[]> {
+  return invoke("search_vault", { vaultPath, query });
 }
 
 export async function readFile(

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import { EditorView, keymap, lineNumbers, highlightActiveLine, drawSelection } from "@codemirror/view";
 import { EditorState } from "@codemirror/state";
+import { search, searchKeymap, highlightSelectionMatches } from "@codemirror/search";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { languages } from "@codemirror/language-data";
 import {
@@ -17,10 +18,33 @@ import {
 } from "@codemirror/language";
 import { useEditorStore } from "@/stores/editor-store";
 import { useUIStore } from "@/stores/ui-store";
+import { useSettingsStore } from "@/stores/settings-store";
+import { createCodeMirrorSurface } from "@/lib/editor-surface/codemirror-surface";
 import { imagePreviewField } from "./codemirror-images";
 import type { Theme } from "@/types";
+import type { Locale } from "@/lib/i18n";
 
 const darkThemes: Theme[] = ["dark", "dracula"];
+
+// Traducciones del panel de búsqueda/reemplazo de CodeMirror.
+const searchPhrases: Record<Locale, Record<string, string>> = {
+  es: {
+    "Find": "Buscar",
+    "Replace": "Reemplazar",
+    "next": "siguiente",
+    "previous": "anterior",
+    "all": "todo",
+    "match case": "may/min",
+    "by word": "palabra completa",
+    "regexp": "regex",
+    "replace": "reemplazar",
+    "replace all": "reemplazar todo",
+    "close": "cerrar",
+    "Go to line": "Ir a línea",
+    "go": "ir",
+  },
+  en: {},
+};
 
 const editorThemeStyles = {
   "&": {
@@ -59,6 +83,39 @@ const editorThemeStyles = {
   ".cm-scroller": {
     overflow: "auto",
   },
+  ".cm-panels": {
+    backgroundColor: "var(--color-editor-gutter-bg)",
+    color: "var(--color-editor-fg)",
+    borderBottom: "1px solid var(--color-border, rgba(128,128,128,0.3))",
+  },
+  ".cm-panel.cm-search": {
+    padding: "6px 8px",
+  },
+  ".cm-panel.cm-search input, .cm-panel.cm-search button, .cm-panel.cm-search label": {
+    fontFamily: "inherit",
+    fontSize: "12px",
+  },
+  ".cm-panel.cm-search input": {
+    backgroundColor: "var(--color-editor-bg)",
+    color: "var(--color-editor-fg)",
+    border: "1px solid var(--color-border, rgba(128,128,128,0.3))",
+    borderRadius: "4px",
+    padding: "2px 6px",
+  },
+  ".cm-panel.cm-search button": {
+    backgroundColor: "transparent",
+    color: "var(--color-editor-fg)",
+    border: "1px solid var(--color-border, rgba(128,128,128,0.3))",
+    borderRadius: "4px",
+    cursor: "pointer",
+  },
+  ".cm-searchMatch": {
+    backgroundColor: "var(--color-editor-selection)",
+  },
+  ".cm-searchMatch.cm-searchMatch-selected": {
+    backgroundColor: "var(--color-editor-cursor)",
+    color: "var(--color-editor-bg)",
+  },
 };
 
 function createEditorTheme(theme: Theme) {
@@ -75,7 +132,11 @@ export function MarkdownEditor({ content, onChange }: MarkdownEditorProps) {
   const viewRef = useRef<EditorView | null>(null);
   const setCursor = useEditorStore((s) => s.setCursor);
   const setEditorView = useEditorStore((s) => s.setEditorView);
+  const setActiveSurface = useEditorStore((s) => s.setActiveSurface);
+  const requestedLine = useEditorStore((s) => s.requestedLine);
+  const setRequestedLine = useEditorStore((s) => s.setRequestedLine);
   const theme = useUIStore((s) => s.theme);
+  const locale = useSettingsStore((s) => s.locale);
 
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
@@ -107,10 +168,13 @@ export function MarkdownEditor({ content, onChange }: MarkdownEditorProps) {
         bracketMatching(),
         indentOnInput(),
         history(),
+        highlightSelectionMatches(),
+        search({ top: true }),
         markdown({ base: markdownLanguage, codeLanguages: languages }),
         syntaxHighlighting(defaultHighlightStyle),
         createEditorTheme(theme),
-        keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
+        EditorState.phrases.of(searchPhrases[locale]),
+        keymap.of([...searchKeymap, ...defaultKeymap, ...historyKeymap, indentWithTab]),
         updateListener,
         EditorView.lineWrapping,
         imagePreviewField,
@@ -122,13 +186,15 @@ export function MarkdownEditor({ content, onChange }: MarkdownEditorProps) {
       parent: containerRef.current,
     });
     setEditorView(viewRef.current);
-  }, [theme]);
+    setActiveSurface(createCodeMirrorSurface(viewRef.current));
+  }, [theme, locale]);
 
   useEffect(() => {
     createEditor();
     return () => {
       viewRef.current?.destroy();
       setEditorView(null);
+      setActiveSurface(null);
     };
   }, [createEditor]);
 
@@ -143,6 +209,26 @@ export function MarkdownEditor({ content, onChange }: MarkdownEditorProps) {
       });
     }
   }, [content]);
+
+  // Jump to a requested line (e.g. from global search) once the view is ready
+  useEffect(() => {
+    if (requestedLine == null) return;
+    const view = viewRef.current;
+    if (!view) return;
+    const id = requestAnimationFrame(() => {
+      const v = viewRef.current;
+      if (!v) return;
+      const lineNo = Math.min(Math.max(1, requestedLine), v.state.doc.lines);
+      const line = v.state.doc.line(lineNo);
+      v.dispatch({
+        selection: { anchor: line.from },
+        effects: EditorView.scrollIntoView(line.from, { y: "center" }),
+      });
+      v.focus();
+      setRequestedLine(null);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [requestedLine, setRequestedLine]);
 
   // Re-create editor on theme change to pick up CSS variable changes
   useEffect(() => {

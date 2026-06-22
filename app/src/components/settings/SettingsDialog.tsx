@@ -32,7 +32,7 @@ interface SettingsDialogProps {
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const theme = useUIStore((s) => s.theme);
   const setTheme = useUIStore((s) => s.setTheme);
-  const { t, locale, setLocale } = useSettingsStore();
+  const { t, locale, setLocale, autoSave, setAutoSave } = useSettingsStore();
 
   const themes: Theme[] = ["dark", "light", "sepia", "pastel", "dracula", "alucard"];
   const locales: { key: Locale; label: string }[] = [
@@ -109,6 +109,33 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                   </button>
                 ))}
               </div>
+            </section>
+
+            {/* Editor Section */}
+            <section>
+              <h3 className="text-sm font-semibold mb-3">{t.settings.editor}</h3>
+              <button
+                onClick={() => setAutoSave(!autoSave)}
+                className="flex items-center justify-between w-full text-left gap-4 cursor-pointer group"
+              >
+                <span>
+                  <span className="block text-sm font-medium">{t.settings.autoSave}</span>
+                  <span className="block text-xs text-muted-foreground">{t.settings.autoSaveDescription}</span>
+                </span>
+                <span
+                  className={cn(
+                    "relative h-5 w-9 shrink-0 rounded-full transition-colors",
+                    autoSave ? "bg-primary" : "bg-border"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "absolute top-0.5 left-0.5 size-4 rounded-full bg-white transition-transform",
+                      autoSave && "translate-x-4"
+                    )}
+                  />
+                </span>
+              </button>
             </section>
           </div>
         </Dialog.Content>

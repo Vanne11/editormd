@@ -1,4 +1,5 @@
 import { FileTree } from "@/components/file-tree/FileTree";
+import { QuickAccess } from "@/components/layout/QuickAccess";
 import { useVaultStore } from "@/stores/vault-store";
 import { useUIStore } from "@/stores/ui-store";
 import { useSettingsStore } from "@/stores/settings-store";
@@ -41,6 +42,7 @@ export function Sidebar() {
           <FolderOpen className="size-3.5" />
         </button>
       </div>
+      <QuickAccess />
       <div className="flex-1 overflow-hidden">
         <FileTree />
       </div>
